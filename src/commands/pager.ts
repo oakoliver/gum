@@ -250,7 +250,7 @@ function createModel(parsed: ParsedArgs): PagerModel {
     .paddingRight(1)
     .paddingLeft(1);
 
-  const viewport = newViewport(0, 0);
+  const viewport = newViewport();
   viewport.softWrap = softWrap;
   viewport.style = vpStyle;
 

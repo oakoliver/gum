@@ -5,7 +5,7 @@
 
 import { newStyle } from '@oakoliver/lipgloss';
 import type { Style } from '@oakoliver/lipgloss';
-import { alignMap, borderMap } from '../internal/decode.js';
+import { alignMap, borderMap } from './internal/decode.js';
 
 /** Style options matching the Go Styles struct. */
 export interface StyleOptions {
