@@ -1,0 +1,66 @@
+{
+  "name": "@oakoliver/gum",
+  "version": "1.0.0",
+  "description": "A tool for glamorous shell scripts. TypeScript port of charmbracelet/gum.",
+  "type": "module",
+  "bin": {
+    "gum": "./dist/esm/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs"
+    }
+  },
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build:esm": "esbuild src/index.ts src/cli.ts --bundle --format=esm --platform=node --outdir=dist/esm --external:@oakoliver/bubbletea --external:@oakoliver/bubbles --external:@oakoliver/lipgloss --external:@oakoliver/glamour --external:@oakoliver/huh",
+    "build:cjs": "esbuild src/index.ts --bundle --format=cjs --platform=node --outdir=dist/cjs --out-extension:.js=.cjs --external:@oakoliver/bubbletea --external:@oakoliver/bubbles --external:@oakoliver/lipgloss --external:@oakoliver/glamour --external:@oakoliver/huh",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist/types",
+    "build": "rm -rf dist && npm run build:esm && npm run build:cjs && npm run build:types",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@oakoliver/bubbletea": "^1.0.0",
+    "@oakoliver/bubbles": "^1.0.0",
+    "@oakoliver/lipgloss": "^1.0.0",
+    "@oakoliver/glamour": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "esbuild": "^0.27.4",
+    "typescript": "^5"
+  },
+  "keywords": [
+    "gum",
+    "shell",
+    "scripts",
+    "cli",
+    "tui",
+    "terminal",
+    "charmbracelet",
+    "interactive",
+    "prompts",
+    "bubbletea"
+  ],
+  "author": "Antonio Oliveira <antonio@oakoliver.com> (https://oakoliver.com)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oakoliver/gum.git"
+  },
+  "homepage": "https://github.com/oakoliver/gum#readme",
+  "bugs": {
+    "url": "https://github.com/oakoliver/gum/issues"
+  }
+}
