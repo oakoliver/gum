@@ -37,7 +37,7 @@ npx @oakoliver/gum choose "Yes" "No"
 
 `filter` from upstream gum is not implemented yet.
 
-Interactive commands draw on stderr and print only the result on stdout, so `RESULT=$(gum choose …)` works. When stdin is piped (for example options for `choose`), keys are read from the terminal. `Ctrl+C` aborts with exit code `130`, `Esc` quits with exit code `1` (`table` exits `0` with an empty row), and `--timeout` (a duration such as `30s`) exits `124`.
+Interactive commands draw on stderr and print only the result on stdout, so `RESULT=$(gum choose …)` works. When stdin is piped (for example options for `choose`), keys are read from the terminal. `Ctrl+C` aborts with exit code `130`, `Esc` quits with exit code `1` (`table` exits `0` with an empty row), and `--timeout` (a duration such as `30s`) exits `124`. Every command lists its flags, defaults and style flags with `--help`, for example `gum choose --help`.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/oakoliver/gum/main/assets/release.gif" width="720" alt="examples/release.sh: gum log prints INFO and WARN lines, gum spin shows a dot and a moon spinner while commands run, and gum table selects the bubbles row from a package table">
@@ -175,7 +175,7 @@ Flags: `--placeholder` (env `GUM_WRITE_PLACEHOLDER`), `--value` (or piped stdin)
 
 ## Fixed since 1.0.2
 
-1.0.2 dropped the first argument of every command, ignored `style --border` and `format --type`, lost `log` key/value pairs, printed only the header in `table --print`, joined vertically by default, drew interactive UIs on stdout (breaking `$(gum choose …)`), and could not read keys when stdin was piped. These are fixed in the next release.
+1.0.2 dropped the first argument of every command, ignored `style --border` and `format --type`, lost `log` key/value pairs, printed only the header in `table --print`, joined vertically by default, drew interactive UIs on stdout (breaking `$(gum choose …)`), could not read keys when stdin was piped, ignored `Ctrl+C` in `input` and `write`, and had no `gum <command> --help`. These are fixed in the next release.
 
 ## Library use
 
