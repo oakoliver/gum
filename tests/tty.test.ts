@@ -31,4 +31,34 @@ describe.skipIf(!hasScript)("interactive commands with piped input", () => {
     expect(out).toMatch(/^banana$/m);
     expect(out).toContain("[exit=0]");
   }, 20000);
+
+  const DOWN = "\x1b[B";
+  const run = (cmd: string) => `${cmd} 2>/tmp/gum-tty-stderr; echo "[exit=$?]"`;
+
+  test("choose --no-limit selects with x and prints in list order with --output-delimiter", async () => {
+    const out = await inPty(run("bun src/cli.ts choose --no-limit --output-delimiter , a b c"), ["x", DOWN, DOWN, "x", "\r"]);
+    expect(out).toMatch(/^a,c$/m);
+  }, 20000);
+
+  test("choose --ordered --limit 2 prints in selection order", async () => {
+    const out = await inPty(run("bun src/cli.ts choose --ordered --limit 2 c b a"), [DOWN, "x", "\x1b[A", "x", "\r"]);
+    // options are sorted (a b c): select b, then a
+    expect(out).toMatch(/^b\na$/m);
+  }, 20000);
+
+  test("choose --label-delimiter shows labels and prints values", async () => {
+    const out = await inPty(run("bun src/cli.ts choose --label-delimiter : 'Apple:a' 'Banana:b'"), [DOWN, "\r"]);
+    expect(out).toMatch(/^b$/m);
+  }, 20000);
+
+  test("choose --selected starts the cursor on the selected option", async () => {
+    const out = await inPty(run("bun src/cli.ts choose --selected banana apple banana cherry"), ["\r"]);
+    expect(out).toMatch(/^banana$/m);
+  }, 20000);
+
+  test("choose: esc quits without a selection and exits 1", async () => {
+    const out = await inPty(run("bun src/cli.ts choose a b"), ["\x1b"]);
+    expect(out).toContain("[exit=1]");
+  }, 20000);
 });
+
