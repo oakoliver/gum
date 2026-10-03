@@ -3,12 +3,12 @@
  * Port of charmbracelet/gum/table
  */
 
-import { KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { KeyPressMsg, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import {
   newTable, withColumns, withRows,
   withTableFocused, withTableHeight, withTableStyles,
-  tableDefaultStyles,
+  tableDefaultStyles, newHelp, newBinding, withKeys, withHelp, matches,
 } from '@oakoliver/bubbles';
 import type { TableModel, TableStyles } from '@oakoliver/bubbles';
 import { newStyle, stringWidth } from '@oakoliver/lipgloss';
@@ -17,7 +17,7 @@ import { borderMap } from '../internal/decode.js';
 import { flagStr, flagInt, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
 import { runProgram, exitTimedOut } from '../internal/program.js';
-import { extractStyleOptions, toLipgloss } from '../style.js';
+import { extractStyleOptions, toLipgloss, parsePadding } from '../style.js';
 import { readStdin, isStdinEmpty } from '../internal/stdin.js';
 import { println } from '../internal/tty.js';
 import { STATUS_ABORTED } from '../internal/exit.js';
@@ -133,42 +133,49 @@ interface TableInteractiveModel extends Model {
   table: TableModel;
   aborted: boolean;
   quitting: boolean;
+  selected: boolean;
   showHelp: boolean;
 }
 
-function createModel(table: TableModel, showHelp: boolean, hideCount: boolean): TableInteractiveModel {
+function createModel(
+  table: TableModel,
+  showHelp: boolean,
+  hideCount: boolean,
+  padding: [number, number, number, number],
+): TableInteractiveModel {
+  const help = newHelp();
+  const keymap = {
+    navigate: newBinding(withKeys('up', 'down'), withHelp('↓↑', 'navigate')),
+    select: newBinding(withKeys('enter'), withHelp('enter', 'select')),
+    quit: newBinding(withKeys('esc', 'ctrl+q', 'q'), withHelp('esc', 'quit')),
+    abort: newBinding(withKeys('ctrl+c'), withHelp('ctrl+c', 'abort')),
+  };
   return {
     table,
     aborted: false,
     quitting: false,
+    selected: false,
     showHelp,
     init() {
       this.table.focus();
       return null;
     },
     update(msg: Msg): [Model, Cmd] {
-      if (msg instanceof WindowSizeMsg) {
-        this.table.setWidth(msg.width);
-        this.table.setHeight(msg.height - 2);
-        this.table.updateViewport();
-        return [this, null];
-      }
+      // The table keeps its height when the window resizes, as upstream.
+      if (msg instanceof WindowSizeMsg) return [this, null];
 
       if (msg instanceof KeyPressMsg) {
-        if (msg.mod & KeyMod.Ctrl && msg.text === 'c') {
+        if (matches(msg, keymap.abort)) {
           this.aborted = true;
           this.quitting = true;
           return [this, () => Quit()];
         }
-
-        if (msg.code === KeyCode.Escape || msg.text === 'q' ||
-            (msg.mod & KeyMod.Ctrl && msg.text === 'q')) {
-          this.aborted = true;
+        if (matches(msg, keymap.quit)) {
           this.quitting = true;
           return [this, () => Quit()];
         }
-
-        if (msg.code === KeyCode.Enter) {
+        if (matches(msg, keymap.select)) {
+          this.selected = true;
           this.quitting = true;
           return [this, () => Quit()];
         }
@@ -182,19 +189,13 @@ function createModel(table: TableModel, showHelp: boolean, hideCount: boolean): 
       if (this.quitting) return '';
 
       let out = this.table.view();
-      const total = this.table.rows().length;
-      const current = this.table.cursor() + 1;
-      const counter = hideCount ? '' : `  ${current}/${total}`;
-
       if (this.showHelp) {
-        out += '\n' + newStyle().faint(true).render(
-          '\u2191/\u2193: navigate \u2022 enter: select \u2022 q/esc: quit',
-        ) + counter;
-      } else {
-        out += '\n' + counter;
+        const total = this.table.rows().length;
+        const current = String(this.table.cursor() + 1).padStart(String(total).length);
+        const count = hideCount ? '' : help.styles.fullDesc.render(`${current}/${total}${help.shortSeparator}`);
+        out += '\n' + count + help.shortHelpView([keymap.navigate, keymap.select, keymap.quit]);
       }
-
-      return out;
+      return newStyle().padding(...padding).render(out);
     },
   };
 }
@@ -306,7 +307,8 @@ export async function run(parsed: ParsedArgs): Promise<void> {
   );
 
   // Interactive mode
-  const model = createModel(table, showHelp, flagBool(flags, 'hide-count', false));
+  const padding = parsePadding(flagStr(flags, 'padding', '0 0'));
+  const model = createModel(table, showHelp, flagBool(flags, 'hide-count', false), padding);
   const { model: final, timedOut } = await runProgram(model, parsed.flags);
   if (timedOut) exitTimedOut();
 
@@ -314,9 +316,8 @@ export async function run(parsed: ParsedArgs): Promise<void> {
     process.exit(STATUS_ABORTED);
   }
 
-  // Output selected row
-  const selected = final.table.selectedRow();
-  if (!selected || selected.length === 0) return;
+  // Quitting with esc/q selects nothing and prints an empty row, as upstream
+  const selected = final.selected ? final.table.selectedRow() ?? [] : [];
 
   if (returnColumn > 0 && returnColumn <= selected.length) {
     println(selected[returnColumn - 1]);
