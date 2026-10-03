@@ -126,3 +126,33 @@ describe("gum log", () => {
     expect(log("--time", "kitchen", "x").stderr).toMatch(/^\d{1,2}:\d{2}(AM|PM) x$/);
   });
 });
+
+describe("gum table --print", () => {
+  function table(input: string, ...args: string[]): string {
+    const proc = Bun.spawnSync(["bun", "src/cli.ts", "table", ...args], {
+      cwd: `${import.meta.dir}/..`,
+      stdin: new TextEncoder().encode(input),
+    });
+    return stripAnsi(proc.stdout.toString() + proc.stderr.toString()).trimEnd();
+  }
+
+  test("prints every row in a bordered table", () => {
+    expect(table("Name,Age\nAlice,30\nBob,4\n", "--print")).toBe(
+      ["╭───────┬─────╮", "│ Name  │ Age │", "├───────┼─────┤", "│ Alice │ 30  │", "│ Bob   │ 4   │", "╰───────┴─────╯"].join("\n"),
+    );
+  });
+
+  test("-s, -b and --columns", () => {
+    expect(table("1;2\n", "-p", "-s", ";", "-b", "double", "--columns", "a,b").split("\n")).toEqual([
+      "╔═══╦═══╗",
+      "║ a ║ b ║",
+      "╠═══╬═══╣",
+      "║ 1 ║ 2 ║",
+      "╚═══╩═══╝",
+    ]);
+  });
+
+  test("rejects rows with more fields than columns", () => {
+    expect(table("a,b\n1,2,3\n", "--print")).toBe("invalid number of columns");
+  });
+});
