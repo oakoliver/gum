@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/table
  */
 
-import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import {
   newTable, withColumns, withRows,
@@ -16,9 +16,10 @@ import type { Border, Style } from '@oakoliver/lipgloss';
 import { borderMap } from '../internal/decode.js';
 import { flagStr, flagInt, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
+import { runProgram, exitTimedOut } from '../internal/program.js';
 import { extractStyleOptions, toLipgloss } from '../style.js';
 import { readStdin, isStdinEmpty } from '../internal/stdin.js';
-import { println, interactiveOptions } from '../internal/tty.js';
+import { println } from '../internal/tty.js';
 import { STATUS_ABORTED } from '../internal/exit.js';
 import * as fs from 'node:fs';
 
@@ -306,8 +307,8 @@ export async function run(parsed: ParsedArgs): Promise<void> {
 
   // Interactive mode
   const model = createModel(table, showHelp, flagBool(flags, 'hide-count', false));
-  const p = new Program(model, ...interactiveOptions());
-  const final = await p.run() as TableInteractiveModel;
+  const { model: final, timedOut } = await runProgram(model, parsed.flags);
+  if (timedOut) exitTimedOut();
 
   if (final.aborted) {
     process.exit(STATUS_ABORTED);

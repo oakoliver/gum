@@ -3,14 +3,14 @@
  * Port of charmbracelet/gum/input
  */
 
-import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newTextInput, EchoMode } from '@oakoliver/bubbles';
 import type { TextInputModel } from '@oakoliver/bubbles';
 import { newStyle } from '@oakoliver/lipgloss';
 import { flagStr, flagInt, flagBool, flagWithEnv } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
-import { interactiveOptions } from '../internal/tty.js';
+import { runProgram, exitTimedOut } from '../internal/program.js';
 import { extractStyleOptions, toLipgloss } from '../style.js';
 import { STATUS_ABORTED } from '../internal/exit.js';
 
@@ -137,8 +137,8 @@ function createModel(parsed: ParsedArgs): InputModel {
 
 export async function run(parsed: ParsedArgs): Promise<void> {
   const model = createModel(parsed);
-  const p = new Program(model, ...interactiveOptions());
-  const final = await p.run() as InputModel;
+  const { model: final, timedOut } = await runProgram(model, parsed.flags);
+  if (timedOut) exitTimedOut();
 
   if (final.aborted) {
     process.exit(STATUS_ABORTED);

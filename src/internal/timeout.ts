@@ -20,23 +20,21 @@ export function createTimeout(timeoutMs: number): { controller: AbortController;
 }
 
 /**
- * Parse a duration string like "5s", "100ms", "2m" into milliseconds.
- * Returns 0 for "0s" or "0".
+ * Parse a Go duration string ("300ms", "5s", "1m30s", "1.5h") into
+ * milliseconds. A bare number is seconds, as Kong parses it upstream.
+ * Returns 0 for empty or invalid input.
  */
 export function parseDuration(s: string): number {
-  if (!s || s === '0' || s === '0s' || s === '0ms') return 0;
+  if (!s) return 0;
+  if (/^\d+(\.\d+)?$/.test(s)) return parseFloat(s) * 1000;
 
-  const match = s.match(/^(\d+(?:\.\d+)?)(ms|s|m|h)?$/);
-  if (!match) return 0;
-
-  const value = parseFloat(match[1]);
-  const unit = match[2] || 'ms';
-
-  switch (unit) {
-    case 'ms': return value;
-    case 's': return value * 1000;
-    case 'm': return value * 60 * 1000;
-    case 'h': return value * 60 * 60 * 1000;
-    default: return 0;
+  const units: Record<string, number> = { ns: 1e-6, us: 1e-3, 'µs': 1e-3, ms: 1, s: 1000, m: 60_000, h: 3_600_000 };
+  const re = /(\d+(?:\.\d+)?)(ns|us|µs|ms|s|m|h)/gy;
+  let total = 0;
+  let consumed = 0;
+  for (const match of s.matchAll(re)) {
+    total += parseFloat(match[1]) * units[match[2]];
+    consumed += match[0].length;
   }
+  return consumed === s.length ? total : 0;
 }

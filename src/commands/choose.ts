@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/choose (v0.17.0)
  */
 
-import { Program, KeyPressMsg, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { KeyPressMsg, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newPaginator, PaginatorType, newHelp, newBinding, withKeys, withHelp, withDisabled, matches } from '@oakoliver/bubbles';
 import type { PaginatorModel, HelpModel, Binding } from '@oakoliver/bubbles';
@@ -11,9 +11,10 @@ import { newStyle, joinVertical, stringWidth, Left } from '@oakoliver/lipgloss';
 import type { Style } from '@oakoliver/lipgloss';
 import { flagStr, flagInt, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
+import { runProgram, exitTimedOut } from '../internal/program.js';
 import { extractStyleOptions, toLipgloss, parsePadding } from '../style.js';
 import { readStdin, isStdinEmpty } from '../internal/stdin.js';
-import { println, interactiveOptions } from '../internal/tty.js';
+import { println } from '../internal/tty.js';
 import { STATUS_ABORTED } from '../internal/exit.js';
 
 interface Item {
@@ -287,7 +288,8 @@ export async function run(parsed: ParsedArgs): Promise<void> {
     },
   };
 
-  const final = await new Program(model, ...interactiveOptions()).run() as ChooseModel;
+  const { model: final, timedOut } = await runProgram(model, flags);
+  if (timedOut) exitTimedOut();
 
   if (final.aborted) process.exit(STATUS_ABORTED);
   if (!final.submitted) {

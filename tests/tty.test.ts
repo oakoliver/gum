@@ -4,8 +4,14 @@
 import { describe, test, expect } from "bun:test";
 import { stripAnsi } from "@oakoliver/lipgloss";
 
-/** Runs `shell` in a pty, typing `keys` after the UI has started. */
-async function inPty(shell: string, keys: string[]): Promise<string> {
+/**
+ * Runs `shell` in a pty, typing `keys` after the UI has started. A watchdog
+ * kills the pty's process group after 8s so a hung program fails the test
+ * instead of hanging the suite.
+ */
+async function inPty(command: string, keys: string[]): Promise<string> {
+  const quiet = ">/dev/null 2>&1 </dev/null";
+  const shell = `(sleep 8 ${quiet}; kill 0) ${quiet} & W=$!; ${command}; kill $W 2>/dev/null`;
   const quoted = `'${shell.replace(/'/g, `'\\''`)}'`;
   const script = process.platform === "darwin"
     ? `script -q /dev/null sh -c ${quoted}`
@@ -59,6 +65,12 @@ describe.skipIf(!hasScript)("interactive commands with piped input", () => {
   test("choose: esc quits without a selection and exits 1", async () => {
     const out = await inPty(run("bun src/cli.ts choose a b"), ["\x1b"]);
     expect(out).toContain("[exit=1]");
+  }, 20000);
+
+
+
+  test("--timeout ends the program with exit 124", async () => {
+    expect(await inPty(run("bun src/cli.ts choose --timeout 500ms a b"), [])).toContain("[exit=124]");
   }, 20000);
 });
 

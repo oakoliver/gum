@@ -3,16 +3,15 @@
  * Port of charmbracelet/gum/confirm
  */
 
-import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newStyle } from '@oakoliver/lipgloss';
 import type { Style } from '@oakoliver/lipgloss';
 import { flagStr, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
-import { interactiveOptions } from '../internal/tty.js';
+import { runProgram } from '../internal/program.js';
 import { extractStyleOptions, toLipgloss } from '../style.js';
 import { STATUS_ABORTED } from '../internal/exit.js';
-import { parseDuration, createTimeout } from '../internal/timeout.js';
 
 interface ConfirmModel extends Model {
   affirmative: string;
@@ -124,11 +123,7 @@ function createModel(parsed: ParsedArgs): ConfirmModel {
 export async function run(parsed: ParsedArgs): Promise<void> {
   const model = createModel(parsed);
 
-  const timeoutStr = flagStr(parsed.flags, 'timeout', '0');
-  const timeoutMs = parseDuration(timeoutStr);
-
-  const p = new Program(model, ...interactiveOptions());
-  const final = await p.run() as ConfirmModel;
+  const { model: final } = await runProgram(model, parsed.flags);
 
   if (final.aborted) {
     process.exit(STATUS_ABORTED);

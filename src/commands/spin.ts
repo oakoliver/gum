@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/spin
  */
 
-import { Program, WithOutput, KeyPressMsg, KeyCode, KeyMod, Quit, Batch } from '@oakoliver/bubbletea';
+import { KeyPressMsg, KeyCode, KeyMod, Quit, Batch } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newSpinner, Line, Dot, MiniDot, Jump, Pulse, Points, Globe, Moon, Monkey, Meter, Hamburger } from '@oakoliver/bubbles';
 import type { SpinnerModel, Spinner } from '@oakoliver/bubbles';
@@ -11,6 +11,7 @@ import { newStyle } from '@oakoliver/lipgloss';
 import type { Style } from '@oakoliver/lipgloss';
 import { flagStr, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
+import { runProgram, exitTimedOut } from '../internal/program.js';
 import { extractStyleOptions, toLipgloss } from '../style.js';
 import { STATUS_ABORTED } from '../internal/exit.js';
 import { spawn } from 'node:child_process';
@@ -169,8 +170,8 @@ export async function run(parsed: ParsedArgs): Promise<void> {
     process.exit(1);
   }
 
-  const p = new Program(model, WithOutput(process.stderr));
-  const final = await p.run() as SpinModel;
+  const { model: final, timedOut } = await runProgram(model, flags, { ttyInput: false });
+  if (timedOut) exitTimedOut();
 
   if (final.aborted) {
     process.exit(STATUS_ABORTED);

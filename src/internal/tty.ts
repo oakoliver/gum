@@ -37,9 +37,9 @@ export function println(s: string): void {
  * default, as upstream) and, when stdin is piped (content read from it), take
  * key presses from the controlling terminal, as upstream Bubble Tea does.
  */
-export function interactiveOptions(output: NodeJS.WriteStream = process.stderr): ProgramOption[] {
+export function interactiveOptions(output: NodeJS.WriteStream = process.stderr, ttyInput = true): ProgramOption[] {
   const options = [WithOutput(output)];
-  if (!tty.isatty(0)) {
+  if (ttyInput && !tty.isatty(0)) {
     try {
       options.push(WithInput(new tty.ReadStream(fs.openSync('/dev/tty', 'r'))));
     } catch {
