@@ -48,6 +48,11 @@ describe("gum style", () => {
     expect(gum("style", "--trim", "  a  ", "  b").trimEnd().split("\n").map((l) => l.trimEnd())).toEqual(["a", "b"]);
   });
 
+  test("keeps its colors when the output is captured, so styled blocks compose", () => {
+    const proc = Bun.spawnSync(["bun", "src/cli.ts", "style", "--foreground", "212", "x"], { cwd: `${import.meta.dir}/..` });
+    expect(proc.stdout.toString()).toBe("\x1b[38;5;212mx\x1b[0m\n");
+  });
+
   test("fails without input", () => {
     const proc = Bun.spawnSync(["bun", "src/cli.ts", "style"], { cwd: `${import.meta.dir}/..` });
     expect(proc.exitCode).toBe(1);
