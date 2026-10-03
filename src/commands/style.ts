@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/style
  */
 
-import { flagStr } from '../parser.js';
+import { flagStr, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
 import { StyleOptions, toLipgloss, extractStyleOptions } from '../style.js';
 import { readStdin, isStdinEmpty } from '../internal/stdin.js';
@@ -33,14 +33,20 @@ export async function run(parsed: ParsedArgs): Promise<void> {
 
   const style = toLipgloss(opts);
 
-  // Get text from args or stdin
-  let text: string;
+  // Get text from args (one per line, as upstream) or stdin
+  let text = '';
   if (parsed.args.length > 0) {
-    text = parsed.args.join(' ');
+    text = parsed.args.join('\n');
   } else if (!isStdinEmpty()) {
-    text = readStdin();
-  } else {
-    text = '';
+    text = readStdin({ stripAnsi: flagBool(flags, 'strip-ansi', true) });
+  }
+  if (!text) {
+    console.error('no input provided, see `gum style --help`');
+    process.exit(1);
+  }
+
+  if (flagBool(flags, 'trim', false)) {
+    text = text.split('\n').map((line) => line.trim()).join('\n');
   }
 
   const result = style.render(text);

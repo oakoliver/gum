@@ -32,3 +32,25 @@ describe("CLI output streams", () => {
     expect(stripAnsi(proc.stderr.toString())).toContain("Working");
   });
 });
+
+describe("gum style", () => {
+  test("--border draws the named border around the text", () => {
+    expect(gum("style", "--border", "rounded", "--padding", "0 1", "Hi").trim().split("\n")).toEqual([
+      "╭────╮",
+      "│ Hi │",
+      "╰────╯",
+    ]);
+    expect(gum("style", "--border", "double", "Hi").trim().split("\n")[0]).toBe("╔══╗");
+  });
+
+  test("arguments are joined one per line, and --trim trims each line", () => {
+    expect(gum("style", "a", "b").trim().split("\n")).toEqual(["a", "b"]);
+    expect(gum("style", "--trim", "  a  ", "  b").trimEnd().split("\n").map((l) => l.trimEnd())).toEqual(["a", "b"]);
+  });
+
+  test("fails without input", () => {
+    const proc = Bun.spawnSync(["bun", "src/cli.ts", "style"], { cwd: `${import.meta.dir}/..` });
+    expect(proc.exitCode).toBe(1);
+    expect(proc.stderr.toString()).toContain("no input provided");
+  });
+});

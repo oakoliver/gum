@@ -3,6 +3,9 @@
  * Port of charmbracelet/gum/internal/decode and charmbracelet/gum/style
  */
 
+import { doubleBorder, hiddenBorder, noBorder, normalBorder, roundedBorder, thickBorder } from '@oakoliver/lipgloss';
+import type { Border } from '@oakoliver/lipgloss';
+
 /** Map alignment strings to lipgloss Position values. */
 export const alignMap: Record<string, number> = {
   center: 0.5,
@@ -13,14 +16,14 @@ export const alignMap: Record<string, number> = {
   middle: 0.5,
 };
 
-/** Map border style names to lipgloss border getter names. */
-export const borderMap: Record<string, string> = {
-  double: 'double',
-  hidden: 'hidden',
-  none: 'none',
-  normal: 'normal',
-  rounded: 'rounded',
-  thick: 'thick',
+/** Map border style names to lipgloss borders. */
+export const borderMap: Record<string, Border> = {
+  double: doubleBorder(),
+  hidden: hiddenBorder(),
+  none: noBorder,
+  normal: normalBorder(),
+  rounded: roundedBorder(),
+  thick: thickBorder(),
 };
 
 /** Map cursor mode strings. */

@@ -64,8 +64,8 @@ export function toLipgloss(opts: StyleOptions): Style {
     s = s.align(alignMap[opts.align]);
   }
 
-  if (opts.border && borderMap[opts.border]) {
-    s = s.border(opts.border as any);
+  if (opts.border && opts.border !== 'none' && borderMap[opts.border]) {
+    s = s.border(borderMap[opts.border]);
   }
 
   if (opts.height !== undefined && opts.height > 0) s = s.height(opts.height);
