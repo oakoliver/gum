@@ -166,3 +166,31 @@ describe("gum join", () => {
     expect(gum("join", "--align", "middle", "x", "a\nb\nc").split("\n")).toEqual([" a", "xb", " c", ""]);
   });
 });
+
+describe("gum spin", () => {
+  function spin(...args: string[]): { stdout: string; stderr: string; exitCode: number } {
+    const proc = Bun.spawnSync(["bun", "src/cli.ts", "spin", ...args], { cwd: `${import.meta.dir}/..` });
+    return { stdout: proc.stdout.toString(), stderr: stripAnsi(proc.stderr.toString()), exitCode: proc.exitCode ?? -1 };
+  }
+
+  test("hides the command's output unless asked, as upstream", () => {
+    expect(spin("--", "sh", "-c", "echo out; echo err >&2")).toMatchObject({ stdout: "", exitCode: 0 });
+    expect(spin("--show-output", "--", "sh", "-c", "echo out").stdout).toBe("out\n");
+    expect(spin("--show-stderr", "--", "sh", "-c", "echo out; echo err >&2").stdout).toBe("err\n");
+  });
+
+  test("runs the command without a shell, keeping each argument intact", () => {
+    expect(spin("--show-output", "--", "printf", "%s|", "a b", "c").stdout).toBe("a b|c|");
+  });
+
+  test("passes the exit code through and shows output on failure with --show-error", () => {
+    expect(spin("--", "sh", "-c", "echo boom; exit 3")).toMatchObject({ stdout: "", exitCode: 3 });
+    expect(spin("--show-error", "--", "sh", "-c", "echo boom; exit 3")).toMatchObject({ stdout: "boom\n", exitCode: 3 });
+  });
+
+  test("reports a command that cannot start", () => {
+    const result = spin("--", "definitely-not-a-command-xyz");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("definitely-not-a-command-xyz");
+  });
+});

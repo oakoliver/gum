@@ -32,8 +32,13 @@ const spinnerMap: Record<string, Spinner> = {
 class FinishCommandMsg {
   readonly _tag = 'FinishCommandMsg';
   constructor(
+    public readonly stdout: string,
+    public readonly stderr: string,
+    /** stdout and stderr interleaved in arrival order */
     public readonly output: string,
     public readonly exitCode: number,
+    /** set when the command could not be started */
+    public readonly error?: string,
   ) {}
 }
 
@@ -45,35 +50,36 @@ interface SpinModel extends Model {
   command: string[];
   aborted: boolean;
   quitting: boolean;
-  output: string;
-  exitCode: number;
-  showOutput: boolean;
+  result: FinishCommandMsg | null;
   align: 'left' | 'right';
 }
 
 function runCommand(command: string[]): Cmd {
   return () => new Promise<Msg>((resolve) => {
+    // Run the command directly, without a shell, as upstream's exec.Command
     const child = spawn(command[0], command.slice(1), {
-      shell: true,
       stdio: ['inherit', 'pipe', 'pipe'],
     });
 
     let stdout = '';
     let stderr = '';
+    let output = '';
 
     child.stdout?.on('data', (data: Buffer) => {
       stdout += data.toString();
+      output += data.toString();
     });
     child.stderr?.on('data', (data: Buffer) => {
       stderr += data.toString();
+      output += data.toString();
     });
 
     child.on('close', (code: number | null) => {
-      resolve(new FinishCommandMsg(stdout || stderr, code ?? 1));
+      resolve(new FinishCommandMsg(stdout, stderr, output, code ?? 1));
     });
 
     child.on('error', (err: Error) => {
-      resolve(new FinishCommandMsg(err.message, 1));
+      resolve(new FinishCommandMsg('', '', '', 1, err.message));
     });
   });
 }
@@ -87,11 +93,10 @@ function createModel(parsed: ParsedArgs): SpinModel {
   spinner.spinner = spinnerType;
 
   const title = flagStr(flags, 'title', 'Loading...');
-  const showOutput = flagBool(flags, 'show-output', false);
   const align = flagStr(flags, 'align', 'left') as 'left' | 'right';
 
   const titleStyle = toLipgloss(extractStyleOptions(flags, 'title'));
-  const spinnerStyle = toLipgloss(extractStyleOptions(flags, 'spinner'));
+  const spinnerStyle = toLipgloss(extractStyleOptions(flags, 'spinner', { foreground: '212' }));
   spinner.style = spinnerStyle;
 
   // Build command from everything after --
@@ -105,9 +110,7 @@ function createModel(parsed: ParsedArgs): SpinModel {
     command,
     aborted: false,
     quitting: false,
-    output: '',
-    exitCode: 0,
-    showOutput,
+    result: null,
     align,
     init(): Cmd {
       const cmds: Cmd[] = [];
@@ -121,8 +124,7 @@ function createModel(parsed: ParsedArgs): SpinModel {
     },
     update(msg: Msg): [Model, Cmd] {
       if (msg instanceof FinishCommandMsg) {
-        this.output = msg.output;
-        this.exitCode = msg.exitCode;
+        this.result = msg;
         this.quitting = true;
         return [this, () => Quit()];
       }
@@ -153,16 +155,13 @@ function createModel(parsed: ParsedArgs): SpinModel {
         line = spinView + ' ' + titleView;
       }
 
-      let out = line;
-      if (this.showOutput && this.output) {
-        out += '\n' + this.output;
-      }
-      return out;
+      return line;
     },
   };
 }
 
 export async function run(parsed: ParsedArgs): Promise<void> {
+  const flags = parsed.flags;
   const model = createModel(parsed);
 
   if (model.command.length === 0) {
@@ -177,13 +176,28 @@ export async function run(parsed: ParsedArgs): Promise<void> {
     process.exit(STATUS_ABORTED);
   }
 
-  // Output the command output
-  if (final.output) {
-    process.stdout.write(final.output);
-    if (!final.output.endsWith('\n')) {
-      process.stdout.write('\n');
-    }
+  const result = final.result;
+  if (!result) process.exit(1);
+  if (result.error) {
+    process.stderr.write(result.error + '\n');
+    process.exit(1);
   }
 
-  process.exit(final.exitCode);
+  // Like upstream: output is hidden unless asked for. On success print what
+  // --show-output/--show-stdout/--show-stderr select; on failure print
+  // everything with --show-error.
+  const showOutput = flagBool(flags, 'show-output', false);
+  const showStdout = flagBool(flags, 'show-stdout', false);
+  const showStderr = flagBool(flags, 'show-stderr', false);
+  let output = '';
+  if (result.exitCode === 0) {
+    if (showOutput || (showStdout && showStderr)) output = result.output;
+    else if (showStdout) output = result.stdout;
+    else if (showStderr) output = result.stderr;
+  } else if (flagBool(flags, 'show-error', false)) {
+    output = result.output;
+  }
+  if (output) process.stdout.write(output);
+
+  process.exit(result.exitCode);
 }
