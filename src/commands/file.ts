@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/file
  */
 
-import { Program, WithOutput, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newFilePicker } from '@oakoliver/bubbles';
 import type { FilePickerModel } from '@oakoliver/bubbles';
@@ -11,6 +11,7 @@ import { newStyle, joinVertical, Left } from '@oakoliver/lipgloss';
 import type { Style } from '@oakoliver/lipgloss';
 import { flagStr, flagInt, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
+import { interactiveOptions } from '../internal/tty.js';
 import { extractStyleOptions, toLipgloss, parsePadding } from '../style.js';
 import { STATUS_ABORTED } from '../internal/exit.js';
 import { resolve } from 'node:path';
@@ -181,7 +182,7 @@ function createModel(parsed: ParsedArgs): FileModel {
 export async function run(parsed: ParsedArgs): Promise<void> {
   const model = createModel(parsed);
 
-  const p = new Program(model, WithOutput(process.stderr));
+  const p = new Program(model, ...interactiveOptions());
   const final = await p.run() as FileModel;
 
   if (final.quitting && !final.selectedPath) {

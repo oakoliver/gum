@@ -11,6 +11,7 @@ import { newStyle, stringWidth, roundedBorder } from '@oakoliver/lipgloss';
 import type { Style } from '@oakoliver/lipgloss';
 import { flagStr, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
+import { interactiveOptions } from '../internal/tty.js';
 import { extractStyleOptions, toLipgloss, parsePadding } from '../style.js';
 import { readStdin, isStdinEmpty } from '../internal/stdin.js';
 import { STATUS_ABORTED } from '../internal/exit.js';
@@ -368,7 +369,7 @@ function createModel(parsed: ParsedArgs): PagerModel {
 
 export async function run(parsed: ParsedArgs): Promise<void> {
   const model = createModel(parsed);
-  const p = new Program(model, WithAltScreen());
+  const p = new Program(model, WithAltScreen(), ...interactiveOptions(process.stdout));
   const final = await p.run() as PagerModel;
 
   if (final.aborted) {

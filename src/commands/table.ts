@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/table
  */
 
-import { Program, WithOutput, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import {
   newTable, withColumns, withRows,
@@ -18,7 +18,7 @@ import { flagStr, flagInt, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
 import { extractStyleOptions, toLipgloss } from '../style.js';
 import { readStdin, isStdinEmpty } from '../internal/stdin.js';
-import { println } from '../internal/tty.js';
+import { println, interactiveOptions } from '../internal/tty.js';
 import { STATUS_ABORTED } from '../internal/exit.js';
 import * as fs from 'node:fs';
 
@@ -306,7 +306,7 @@ export async function run(parsed: ParsedArgs): Promise<void> {
 
   // Interactive mode
   const model = createModel(table, showHelp, flagBool(flags, 'hide-count', false));
-  const p = new Program(model, WithOutput(process.stderr));
+  const p = new Program(model, ...interactiveOptions());
   const final = await p.run() as TableInteractiveModel;
 
   if (final.aborted) {
