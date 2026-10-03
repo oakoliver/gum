@@ -5,6 +5,7 @@
  */
 
 import { parseArgs, type ParsedArgs } from './parser.js';
+import { commandHelp } from './help.js';
 
 // Command imports
 import { run as runChoose } from './commands/choose.js';
@@ -71,6 +72,17 @@ async function main(): Promise<void> {
   }
   
   const command = args[0];
+
+  // `gum <command> --help`; anything after `--` belongs to the command spin runs.
+  const ownArgs = args.indexOf('--') === -1 ? args : args.slice(0, args.indexOf('--'));
+  if (ownArgs.slice(1).some((a) => a === '--help' || a === '-h')) {
+    const help = commandHelp(command);
+    if (help) {
+      process.stdout.write(help);
+      process.exit(0);
+    }
+  }
+
   const parsed = parseArgs(args);
   
   try {
