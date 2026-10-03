@@ -11,7 +11,7 @@ function gum(...args: string[]): string {
 
 describe("CLI", () => {
   test("passes the first argument after the subcommand", () => {
-    expect(gum("join", "A", "B", "C").trim().split("\n")).toEqual(["A", "B", "C"]);
+    expect(gum("join", "--vertical", "A", "B", "C").trim().split("\n")).toEqual(["A", "B", "C"]);
     expect(gum("join", "--horizontal", "A", "B", "C").trim()).toBe("ABC");
   });
 });
@@ -154,5 +154,15 @@ describe("gum table --print", () => {
 
   test("rejects rows with more fields than columns", () => {
     expect(table("a,b\n1,2,3\n", "--print")).toBe("invalid number of columns");
+  });
+});
+
+describe("gum join", () => {
+  test("joins horizontally by default, as upstream", () => {
+    expect(gum("join", "A", "B", "C").trim()).toBe("ABC");
+  });
+
+  test("--align middle centers blocks", () => {
+    expect(gum("join", "--align", "middle", "x", "a\nb\nc").split("\n")).toEqual([" a", "xb", " c", ""]);
   });
 });
