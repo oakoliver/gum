@@ -15,3 +15,10 @@ describe("CLI", () => {
     expect(gum("join", "--horizontal", "A", "B", "C").trim()).toBe("ABC");
   });
 });
+
+describe("CLI version", () => {
+  test("matches package.json", async () => {
+    const pkg = await Bun.file(`${import.meta.dir}/../package.json`).json();
+    expect(gum("--version").trim()).toBe(`gum version ${pkg.version}`);
+  });
+});

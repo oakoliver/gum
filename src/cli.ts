@@ -20,7 +20,7 @@ import { run as runStyle } from './commands/style.js';
 import { run as runTable } from './commands/table.js';
 import { run as runWrite } from './commands/write.js';
 
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 
 function printHelp(): void {
   console.log(`gum ${VERSION}
