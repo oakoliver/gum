@@ -297,7 +297,8 @@ export async function run(parsed: ParsedArgs): Promise<void> {
   };
 
   // Create table
-  const tableHeight = height > 0 ? height : Math.min(dataRows.length, 20);
+  // The height includes the header line
+  const tableHeight = height > 0 ? height : Math.min(dataRows.length + 1, 20);
   const table = newTable(
     withColumns(columns),
     withRows(dataRows),
