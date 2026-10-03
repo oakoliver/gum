@@ -27,7 +27,8 @@ export async function runProgram<M extends Model>(
 ): Promise<ProgramResult<M>> {
   const timeoutMs = parseDuration(flagStr(flags, 'timeout', '0'));
   const { controller, cancel } = createTimeout(timeoutMs);
-  const options = [...extra, ...interactiveOptions(output, ttyInput)];
+  const io = interactiveOptions(output, ttyInput);
+  const options = [...extra, ...io.options];
   if (timeoutMs > 0) options.push(WithAbortSignal(controller.signal));
 
   try {
@@ -39,6 +40,7 @@ export async function runProgram<M extends Model>(
     throw error;
   } finally {
     cancel();
+    io.close();
   }
 }
 

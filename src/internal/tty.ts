@@ -36,15 +36,22 @@ export function println(s: string): void {
  * Program options for interactive commands: draw on `output` (stderr by
  * default, as upstream) and, when stdin is piped (content read from it), take
  * key presses from the controlling terminal, as upstream Bubble Tea does.
+ * Call `close` after the program ends: an open terminal stream keeps the
+ * process alive.
  */
-export function interactiveOptions(output: NodeJS.WriteStream = process.stderr, ttyInput = true): ProgramOption[] {
+export function interactiveOptions(
+  output: NodeJS.WriteStream = process.stderr,
+  ttyInput = true,
+): { options: ProgramOption[]; close: () => void } {
   const options = [WithOutput(output)];
+  let input: tty.ReadStream | undefined;
   if (ttyInput && !tty.isatty(0)) {
     try {
-      options.push(WithInput(new tty.ReadStream(fs.openSync('/dev/tty', 'r'))));
+      input = new tty.ReadStream(fs.openSync('/dev/tty', 'r'));
+      options.push(WithInput(input));
     } catch {
       // No controlling terminal: keep stdin.
     }
   }
-  return options;
+  return { options, close: () => input?.destroy() };
 }
