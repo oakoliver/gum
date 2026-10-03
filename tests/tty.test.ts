@@ -11,7 +11,7 @@ import { stripAnsi } from "@oakoliver/lipgloss";
  */
 async function inPty(command: string, keys: string[]): Promise<string> {
   const quiet = ">/dev/null 2>&1 </dev/null";
-  const shell = `(sleep 8 ${quiet}; kill 0) ${quiet} & W=$!; ${command}; kill $W 2>/dev/null`;
+  const shell = `stty rows 24 cols 100; (sleep 8 ${quiet}; kill 0) ${quiet} & W=$!; ${command}; kill $W 2>/dev/null`;
   const quoted = `'${shell.replace(/'/g, `'\\''`)}'`;
   const script = process.platform === "darwin"
     ? `script -q /dev/null sh -c ${quoted}`
@@ -99,5 +99,24 @@ describe.skipIf(!hasScript)("interactive commands with piped input", () => {
     expect(await inPty(run("printf 'from stdin' | bun src/cli.ts write"), ["\r"])).toMatch(/^from stdin$/m);
     expect(await inPty(run("bun src/cli.ts write"), ["x", "\x1b"])).toContain("[exit=1]");
   }, 40000);
+
+  test("table: selects a row inline without taking over the screen", async () => {
+    const out = await inPty(
+      // stderr (the UI) stays on the terminal so the frame is captured
+      "echo before; printf 'n,v\\na,1\\nb,2\\n' | bun src/cli.ts table --return-column 1; echo \"[exit=$?]\"",
+      [DOWN, "\r"],
+    );
+    expect(out).toMatch(/^before$/m);
+    expect(out).toMatch(/^b$/m);
+    // The table is as tall as its rows, not padded to the terminal height
+    expect(out.split("\n").filter((line) => line.trim() === "").length).toBeLessThan(6);
+    expect(out).toContain("[exit=0]");
+  }, 20000);
+
+  test("table: q quits without a selection and exits 0", async () => {
+    const out = await inPty(run("printf 'n\\na\\n' | bun src/cli.ts table"), ["q"]);
+    expect(out).toContain("[exit=0]");
+    expect(out).not.toMatch(/^a$/m);
+  }, 20000);
 });
 
