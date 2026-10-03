@@ -22,3 +22,13 @@ describe("CLI version", () => {
     expect(gum("--version").trim()).toBe(`gum version ${pkg.version}`);
   });
 });
+
+describe("CLI output streams", () => {
+  test("interactive UIs draw on stderr so $(gum …) captures only the result", () => {
+    const proc = Bun.spawnSync(["bun", "src/cli.ts", "spin", "--title", "Working", "--", "sleep", "0.3"], {
+      cwd: `${import.meta.dir}/..`,
+    });
+    expect(proc.stdout.toString()).toBe("");
+    expect(stripAnsi(proc.stderr.toString())).toContain("Working");
+  });
+});

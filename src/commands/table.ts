@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/table
  */
 
-import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { Program, WithOutput, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import {
   newTable, withColumns, withRows,
@@ -259,7 +259,7 @@ export async function run(parsed: ParsedArgs): Promise<void> {
 
   // Interactive mode
   const model = createModel(table, showHelp);
-  const p = new Program(model);
+  const p = new Program(model, WithOutput(process.stderr));
   const final = await p.run() as TableInteractiveModel;
 
   if (final.aborted) {

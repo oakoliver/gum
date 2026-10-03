@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/input
  */
 
-import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { Program, WithOutput, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newTextInput, EchoMode } from '@oakoliver/bubbles';
 import type { TextInputModel } from '@oakoliver/bubbles';
@@ -136,7 +136,7 @@ function createModel(parsed: ParsedArgs): InputModel {
 
 export async function run(parsed: ParsedArgs): Promise<void> {
   const model = createModel(parsed);
-  const p = new Program(model);
+  const p = new Program(model, WithOutput(process.stderr));
   const final = await p.run() as InputModel;
 
   if (final.aborted) {

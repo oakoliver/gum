@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/file
  */
 
-import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { Program, WithOutput, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newFilePicker } from '@oakoliver/bubbles';
 import type { FilePickerModel } from '@oakoliver/bubbles';
@@ -181,7 +181,7 @@ function createModel(parsed: ParsedArgs): FileModel {
 export async function run(parsed: ParsedArgs): Promise<void> {
   const model = createModel(parsed);
 
-  const p = new Program(model);
+  const p = new Program(model, WithOutput(process.stderr));
   const final = await p.run() as FileModel;
 
   if (final.quitting && !final.selectedPath) {

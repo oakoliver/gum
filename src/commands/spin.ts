@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/spin
  */
 
-import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, Batch } from '@oakoliver/bubbletea';
+import { Program, WithOutput, KeyPressMsg, KeyCode, KeyMod, Quit, Batch } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newSpinner, Line, Dot, MiniDot, Jump, Pulse, Points, Globe, Moon, Monkey, Meter, Hamburger } from '@oakoliver/bubbles';
 import type { SpinnerModel, Spinner } from '@oakoliver/bubbles';
@@ -170,7 +170,7 @@ export async function run(parsed: ParsedArgs): Promise<void> {
     process.exit(1);
   }
 
-  const p = new Program(model);
+  const p = new Program(model, WithOutput(process.stderr));
   const final = await p.run() as SpinModel;
 
   if (final.aborted) {

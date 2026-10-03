@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/choose
  */
 
-import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { Program, WithOutput, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newPaginator, PaginatorType } from '@oakoliver/bubbles';
 import type { PaginatorModel } from '@oakoliver/bubbles';
@@ -284,7 +284,7 @@ export async function run(parsed: ParsedArgs): Promise<void> {
     return;
   }
 
-  const p = new Program(model);
+  const p = new Program(model, WithOutput(process.stderr));
   const final = await p.run() as ChooseModel;
 
   if (final.aborted) {

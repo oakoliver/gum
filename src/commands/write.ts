@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/write
  */
 
-import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { Program, WithOutput, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newTextarea } from '@oakoliver/bubbles';
 import type { TextareaModel } from '@oakoliver/bubbles';
@@ -138,7 +138,7 @@ function createModel(parsed: ParsedArgs): WriteModel {
 
 export async function run(parsed: ParsedArgs): Promise<void> {
   const model = createModel(parsed);
-  const p = new Program(model);
+  const p = new Program(model, WithOutput(process.stderr));
   const final = await p.run() as WriteModel;
 
   if (final.aborted) {
