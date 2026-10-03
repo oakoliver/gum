@@ -8,7 +8,7 @@ import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import {
   newTable, withColumns, withRows,
   withTableFocused, withTableHeight, withTableStyles,
-  tableDefaultStyles, newHelp, newBinding, withKeys, withHelp, matches,
+  tableDefaultStyles, withTableWidth, newHelp, newBinding, withKeys, withHelp, matches,
 } from '@oakoliver/bubbles';
 import type { TableModel, TableStyles } from '@oakoliver/bubbles';
 import { newStyle, stringWidth } from '@oakoliver/lipgloss';
@@ -304,6 +304,8 @@ export async function run(parsed: ParsedArgs): Promise<void> {
     withTableFocused(true),
     withTableStyles(styles),
     withTableHeight(tableHeight),
+    // A zero-width bubbles table renders no rows; size it to its columns.
+    withTableWidth(columns.reduce((sum, c) => sum + c.width + 2, 0)),
   );
 
   // Interactive mode

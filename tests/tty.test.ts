@@ -107,6 +107,7 @@ describe.skipIf(!hasScript)("interactive commands with piped input", () => {
       [DOWN, "\r"],
     );
     expect(out).toMatch(/^before$/m);
+    expect(out).toMatch(/^ ?a +1/m); // rows are drawn
     expect(out).toMatch(/^b$/m);
     // The table is as tall as its rows, not padded to the terminal height
     expect(out.split("\n").filter((line) => line.trim() === "").length).toBeLessThan(6);
