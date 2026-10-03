@@ -9,7 +9,7 @@ import { stripAnsi } from "@oakoliver/lipgloss";
  * kills the pty's process group after 8s so a hung program fails the test
  * instead of hanging the suite.
  */
-async function inPty(command: string, keys: string[]): Promise<string> {
+async function inPty(command: string, keys: string[], { keepOpen = false } = {}): Promise<string> {
   const quiet = ">/dev/null 2>&1 </dev/null";
   const shell = `stty rows 24 cols 100; (sleep 8 ${quiet}; kill 0) ${quiet} & W=$!; ${command}; kill $W 2>/dev/null`;
   const quoted = `'${shell.replace(/'/g, `'\\''`)}'`;
@@ -23,8 +23,26 @@ async function inPty(command: string, keys: string[]): Promise<string> {
     proc.stdin.write(key);
     await Bun.sleep(300);
   }
-  proc.stdin.end();
-  const out = await new Response(proc.stdout).text();
+  // keepOpen: leave the terminal open, as a real one stays, and only return
+  // what was printed before the terminal closes, so a command that does not
+  // exit on its own (script(1) itself waits for the terminal) shows no
+  // "[exit=…]" marker.
+  let out = "";
+  if (keepOpen) {
+    const reader = proc.stdout.getReader();
+    const decoder = new TextDecoder();
+    const deadline = Date.now() + 4000;
+    while (!out.includes("[exit=") && Date.now() < deadline) {
+      const chunk = await Promise.race([reader.read(), Bun.sleep(deadline - Date.now()).then(() => null)]);
+      if (!chunk || chunk.done) break;
+      out += decoder.decode(chunk.value);
+    }
+    proc.kill();
+    reader.releaseLock();
+  } else {
+    proc.stdin.end();
+    out = await new Response(proc.stdout).text();
+  }
   await proc.exited;
   return stripAnsi(out).replace(/\x1b\[[0-9;?<>=]*[a-zA-Z]/g, "").replace(/\r/g, "");
 }
@@ -119,6 +137,11 @@ describe.skipIf(!hasScript)("interactive commands with piped input", () => {
     const out = await inPty(run("printf 'n\\na\\n' | bun src/cli.ts table"), ["q"]);
     expect(out).toContain("[exit=0]");
     expect(out).not.toMatch(/^a$/m);
+  }, 20000);
+
+  test("a command reading keys from the terminal exits while the terminal stays open", async () => {
+    const out = await inPty(run("printf 'a\\nb\\n' | bun src/cli.ts choose"), ["\r"], { keepOpen: true });
+    expect(out).toContain("[exit=0]");
   }, 20000);
 });
 
