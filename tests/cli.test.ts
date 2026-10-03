@@ -54,3 +54,30 @@ describe("gum style", () => {
     expect(proc.stderr.toString()).toContain("no input provided");
   });
 });
+
+describe("gum format", () => {
+  function raw(...args: string[]): string {
+    return Bun.spawnSync(["bun", "src/cli.ts", ...args], { cwd: `${import.meta.dir}/..` }).stdout.toString();
+  }
+
+  test("--type and -t select the format", () => {
+    expect(raw("format", "--type", "emoji", "I :heart: gum").trim()).toBe("I ❤️ gum");
+    expect(raw("format", "-t", "emoji", ":rocket:").trim()).toBe("🚀");
+    // Markdown would render the code as a paragraph; code fences it.
+    expect(stripAnsi(raw("format", "-t", "code", "-l", "go", "x := 1")).trim()).toBe("x := 1");
+  });
+
+  test("markdown uses the pink theme by default, as upstream", () => {
+    expect(raw("format", "# Title")).toBe(raw("format", "--theme", "pink", "# Title"));
+    expect(raw("format", "# Title")).not.toBe(raw("format", "--theme", "dark", "# Title"));
+  });
+
+  test("templates run termenv's template functions", () => {
+    expect(raw("format", "-t", "template", '{{ Bold "Tasty" }} {{ Color "99" "0" " Gum " }}').trim()).toBe(
+      "\x1b[1mTasty\x1b[0m \x1b[38;5;99;48;5;0m Gum \x1b[0m",
+    );
+    expect(raw("format", "-t", "template", '{{ Italic (Foreground "212" "x") }}').trim()).toBe(
+      "\x1b[3m\x1b[38;5;212mx\x1b[0m\x1b[0m",
+    );
+  });
+});
