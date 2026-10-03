@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/file
  */
 
-import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newFilePicker } from '@oakoliver/bubbles';
 import type { FilePickerModel } from '@oakoliver/bubbles';
@@ -11,6 +11,7 @@ import { newStyle, joinVertical, Left } from '@oakoliver/lipgloss';
 import type { Style } from '@oakoliver/lipgloss';
 import { flagStr, flagInt, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
+import { runProgram, exitTimedOut } from '../internal/program.js';
 import { extractStyleOptions, toLipgloss, parsePadding } from '../style.js';
 import { STATUS_ABORTED } from '../internal/exit.js';
 import { resolve } from 'node:path';
@@ -181,8 +182,8 @@ function createModel(parsed: ParsedArgs): FileModel {
 export async function run(parsed: ParsedArgs): Promise<void> {
   const model = createModel(parsed);
 
-  const p = new Program(model);
-  const final = await p.run() as FileModel;
+  const { model: final, timedOut } = await runProgram(model, parsed.flags);
+  if (timedOut) exitTimedOut();
 
   if (final.quitting && !final.selectedPath) {
     process.exit(STATUS_ABORTED);

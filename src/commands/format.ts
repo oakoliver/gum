@@ -3,32 +3,19 @@
  * Port of charmbracelet/gum/format
  */
 
-import { render as renderMarkdown } from '@oakoliver/glamour';
+import { TermRenderer, withAutoStyle, withStylePath, withWordWrap } from '@oakoliver/glamour';
 import { flagStr, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
 import { readStdin, isStdinEmpty } from '../internal/stdin.js';
 
 type FormatType = 'markdown' | 'code' | 'emoji' | 'template';
 
-function detectFormatType(flags: Record<string, string | boolean>): FormatType {
-  if (flagBool(flags, 'type', false)) {
-    const t = flagStr(flags, 'type', 'markdown');
-    if (['markdown', 'code', 'emoji', 'template'].includes(t)) {
-      return t as FormatType;
-    }
-  }
-  // Check positional type flags
-  if (flags['code'] === true) return 'code';
-  if (flags['emoji'] === true) return 'emoji';
-  if (flags['template'] === true) return 'template';
-  if (flags['markdown'] === true) return 'markdown';
-  return 'markdown';
+function formatMarkdown(text: string, theme: string): string {
+  return new TermRenderer(withStylePath(theme), withWordWrap(0)).render(text);
 }
 
 function formatCode(text: string, language: string): string {
-  // Wrap in markdown code block and render with glamour
-  const wrapped = '```' + language + '\n' + text + '\n```';
-  return renderMarkdown(wrapped, 'dark');
+  return new TermRenderer(withAutoStyle(), withWordWrap(0)).render('```' + language + '\n' + text + '\n```');
 }
 
 function formatEmoji(text: string): string {
@@ -39,12 +26,98 @@ function formatEmoji(text: string): string {
   });
 }
 
-function formatTemplate(text: string, _flags: Record<string, string | boolean>): string {
-  // Basic template support — Go templates use {{.Env.VAR}} etc.
-  // We support {{ .Env.KEY }} patterns by replacing with env vars
-  return text.replace(/\{\{\s*\.Env\.(\w+)\s*\}\}/g, (_match, key) => {
-    return process.env[key] || '';
-  });
+// ---------------------------------------------------------------------------
+// Templates: Go text/template actions with termenv's template functions, as
+// upstream (`{{ Bold "Tasty" }} {{ Color "99" "0" " Gum " }}`).
+// ---------------------------------------------------------------------------
+
+const SGR: Record<string, string> = {
+  Bold: '1', Faint: '2', Italic: '3', Underline: '4', Blink: '5', Reverse: '7', CrossOut: '9', Overline: '53',
+};
+
+function colorSequence(color: string, background: boolean): string {
+  if (/^#[0-9a-fA-F]{6}$/.test(color)) {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
+    return `${background ? 48 : 38};2;${r};${g};${b}`;
+  }
+  const n = Number(color);
+  if (!Number.isInteger(n) || n < 0 || n > 255) return '';
+  return `${background ? 48 : 38};5;${n}`;
+}
+
+function styled(text: string, ...sequences: string[]): string {
+  const seq = sequences.filter(Boolean).join(';');
+  return seq ? `\x1b[${seq}m${text}\x1b[0m` : text;
+}
+
+const TEMPLATE_FUNCS: Record<string, (...args: string[]) => string> = {
+  Color: (fg, bg, text) => styled(text, colorSequence(fg, false), colorSequence(bg, true)),
+  Foreground: (color, text) => styled(text, colorSequence(color, false)),
+  Background: (color, text) => styled(text, colorSequence(color, true)),
+  ...Object.fromEntries(Object.entries(SGR).map(([name, code]) => [name, (text: string) => styled(text, code)])),
+};
+
+/** Evaluates one action body: `Func arg (Func arg) "literal"`. */
+function evalAction(source: string): string {
+  let pos = 0;
+  const skipSpace = () => { while (pos < source.length && /\s/.test(source[pos])) pos++; };
+
+  const parseOperand = (): string => {
+    skipSpace();
+    const ch = source[pos];
+    if (ch === '"') {
+      const match = /^"(?:[^"\\]|\\.)*"/.exec(source.slice(pos));
+      if (!match) throw new Error('unable to parse template: unterminated string');
+      pos += match[0].length;
+      return JSON.parse(match[0]);
+    }
+    if (ch === '`') {
+      const end = source.indexOf('`', pos + 1);
+      if (end === -1) throw new Error('unable to parse template: unterminated raw string');
+      const value = source.slice(pos + 1, end);
+      pos = end + 1;
+      return value;
+    }
+    if (ch === '(') {
+      pos++;
+      const value = parseCall();
+      skipSpace();
+      if (source[pos] !== ')') throw new Error('unable to parse template: missing )');
+      pos++;
+      return value;
+    }
+    const match = /^[^\s()"`]+/.exec(source.slice(pos));
+    if (!match) throw new Error(`unable to parse template: unexpected ${JSON.stringify(source.slice(pos))}`);
+    pos += match[0].length;
+    return match[0];
+  };
+
+  const parseCall = (): string => {
+    skipSpace();
+    const name = /^[A-Za-z]\w*/.exec(source.slice(pos))?.[0];
+    if (!name || !(name in TEMPLATE_FUNCS)) return parseOperand();
+    pos += name.length;
+    const args: string[] = [];
+    skipSpace();
+    while (pos < source.length && source[pos] !== ')') {
+      args.push(parseOperand());
+      skipSpace();
+    }
+    const fn = TEMPLATE_FUNCS[name];
+    if (args.length !== fn.length) {
+      throw new Error(`unable to parse template: ${name} expects ${fn.length} arguments, got ${args.length}`);
+    }
+    return fn(...args);
+  };
+
+  const value = parseCall();
+  skipSpace();
+  if (pos !== source.length) throw new Error(`unable to parse template: unexpected ${JSON.stringify(source.slice(pos))}`);
+  return value;
+}
+
+function formatTemplate(text: string): string {
+  return text.replace(/\{\{-?([\s\S]*?)-?\}\}/g, (_match, body: string) => evalAction(body.trim()));
 }
 
 // Common emoji shortcodes
@@ -73,26 +146,20 @@ const EMOJI_MAP: Record<string, string> = {
 export async function run(parsed: ParsedArgs): Promise<void> {
   const flags = parsed.flags;
 
-  // Get format type
-  const formatType = detectFormatType(flags);
-  const language = flagStr(flags, 'language', '') || flagStr(flags, 'lang', '');
-  const theme = flagStr(flags, 'theme', 'dark');
+  const type = flagStr(flags, 'type', 'markdown') as FormatType;
+  const language = flagStr(flags, 'language', '');
+  const theme = flagStr(flags, 'theme', 'pink');
 
-  // Get text from args or stdin
-  let text: string;
+  // Get text from args (one per line) or stdin
+  let text = '';
   if (parsed.args.length > 0) {
     text = parsed.args.join('\n');
   } else if (!isStdinEmpty()) {
-    text = readStdin();
-  } else {
-    text = '';
+    text = readStdin({ stripAnsi: flagBool(flags, 'strip-ansi', true) });
   }
 
-  if (!text) return;
-
   let output: string;
-
-  switch (formatType) {
+  switch (type) {
     case 'code':
       output = formatCode(text, language);
       break;
@@ -100,11 +167,10 @@ export async function run(parsed: ParsedArgs): Promise<void> {
       output = formatEmoji(text);
       break;
     case 'template':
-      output = formatTemplate(text, flags);
+      output = formatTemplate(text);
       break;
-    case 'markdown':
     default:
-      output = renderMarkdown(text, theme);
+      output = formatMarkdown(text, theme);
       break;
   }
 

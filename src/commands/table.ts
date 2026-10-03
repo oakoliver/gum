@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/table
  */
 
-import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import {
   newTable, withColumns, withRows,
@@ -12,8 +12,11 @@ import {
 } from '@oakoliver/bubbles';
 import type { TableModel, TableStyles } from '@oakoliver/bubbles';
 import { newStyle, stringWidth } from '@oakoliver/lipgloss';
+import type { Border, Style } from '@oakoliver/lipgloss';
+import { borderMap } from '../internal/decode.js';
 import { flagStr, flagInt, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
+import { runProgram, exitTimedOut } from '../internal/program.js';
 import { extractStyleOptions, toLipgloss } from '../style.js';
 import { readStdin, isStdinEmpty } from '../internal/stdin.js';
 import { println } from '../internal/tty.js';
@@ -91,6 +94,38 @@ function writeCSV(row: string[], separator: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Static rendering (--print), as lipgloss/table renders it upstream
+// ---------------------------------------------------------------------------
+
+export function renderTable(
+  headers: string[],
+  rows: string[][],
+  border: Border,
+  borderStyle: Style,
+  headerStyle: Style,
+  cellStyle: Style,
+): string {
+  const hasBorder = border.left !== '' || border.top !== '';
+  const header = headers.map((h) => headerStyle.render(h));
+  const body = rows.map((row) => headers.map((_, i) => cellStyle.render(row[i] ?? '')));
+  const widths = headers.map((_, i) => Math.max(...[header, ...body].map((cells) => stringWidth(cells[i]))));
+
+  const b = (s: string) => (s === '' ? '' : borderStyle.render(s));
+  const line = (left: string, fill: string, sep: string, right: string) =>
+    b(left) + widths.map((w) => b(fill.repeat(w))).join(b(sep)) + b(right);
+  const cells = (row: string[]) =>
+    b(border.left) + row.map((cell, i) => cell + ' '.repeat(widths[i] - stringWidth(cell))).join(b(border.left)) + b(border.right);
+
+  const out: string[] = [];
+  if (hasBorder && border.top) out.push(line(border.topLeft, border.top, border.middleTop, border.topRight));
+  out.push(cells(header));
+  if (hasBorder && border.top) out.push(line(border.middleLeft, border.top, border.middle, border.middleRight));
+  out.push(...body.map(cells));
+  if (hasBorder && border.bottom) out.push(line(border.bottomLeft, border.bottom, border.middleBottom, border.bottomRight));
+  return out.join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // Interactive model
 // ---------------------------------------------------------------------------
 
@@ -101,7 +136,7 @@ interface TableInteractiveModel extends Model {
   showHelp: boolean;
 }
 
-function createModel(table: TableModel, showHelp: boolean): TableInteractiveModel {
+function createModel(table: TableModel, showHelp: boolean, hideCount: boolean): TableInteractiveModel {
   return {
     table,
     aborted: false,
@@ -149,7 +184,7 @@ function createModel(table: TableModel, showHelp: boolean): TableInteractiveMode
       let out = this.table.view();
       const total = this.table.rows().length;
       const current = this.table.cursor() + 1;
-      const counter = `  ${current}/${total}`;
+      const counter = hideCount ? '' : `  ${current}/${total}`;
 
       if (this.showHelp) {
         out += '\n' + newStyle().faint(true).render(
@@ -191,6 +226,11 @@ export async function run(parsed: ParsedArgs): Promise<void> {
     process.exit(1);
   }
 
+  if ([...separator].length !== 1) {
+    console.error('separator must be single character');
+    process.exit(1);
+  }
+
   // Parse CSV
   const allRows = parseCSV(input, separator);
   if (allRows.length === 0) {
@@ -228,17 +268,31 @@ export async function run(parsed: ParsedArgs): Promise<void> {
     return { title, width: maxW + 2 };
   });
 
-  // Build styles
-  const cellOpts = extractStyleOptions(flags, 'cell');
-  const headerOpts = extractStyleOptions(flags, 'header');
-  const selectedOpts = extractStyleOptions(flags, 'selected');
-  if (!selectedOpts.foreground) selectedOpts.foreground = '212';
+  for (const row of dataRows) {
+    if (row.length > headers.length) {
+      console.error('invalid number of columns');
+      process.exit(1);
+    }
+    while (row.length < headers.length) row.push('');
+  }
 
+  // Build styles: the defaults inherit the user's flags, as upstream
   const baseStyles = tableDefaultStyles();
+  const cellStyle = baseStyles.cell.inherit(toLipgloss(extractStyleOptions(flags, 'cell')));
+  const headerStyle = baseStyles.header.inherit(toLipgloss(extractStyleOptions(flags, 'header')));
+
+  // Print mode — static bordered table, no interaction
+  if (printMode) {
+    const border = borderMap[flagStr(flags, 'border', 'rounded')] ?? borderMap.rounded;
+    const borderStyle = toLipgloss(extractStyleOptions(flags, 'border'));
+    println(renderTable(headers, dataRows, border, borderStyle, headerStyle, cellStyle));
+    return;
+  }
+
   const styles: TableStyles = {
-    cell: toLipgloss(cellOpts).inherit(baseStyles.cell),
-    header: toLipgloss(headerOpts).inherit(baseStyles.header),
-    selected: toLipgloss(selectedOpts).inherit(baseStyles.selected),
+    cell: cellStyle,
+    header: headerStyle,
+    selected: toLipgloss(extractStyleOptions(flags, 'selected', { foreground: '212' })),
   };
 
   // Create table
@@ -251,16 +305,10 @@ export async function run(parsed: ParsedArgs): Promise<void> {
     withTableHeight(tableHeight),
   );
 
-  // Print mode — static render, no interaction
-  if (printMode) {
-    println(table.view());
-    return;
-  }
-
   // Interactive mode
-  const model = createModel(table, showHelp);
-  const p = new Program(model);
-  const final = await p.run() as TableInteractiveModel;
+  const model = createModel(table, showHelp, flagBool(flags, 'hide-count', false));
+  const { model: final, timedOut } = await runProgram(model, parsed.flags);
+  if (timedOut) exitTimedOut();
 
   if (final.aborted) {
     process.exit(STATUS_ABORTED);

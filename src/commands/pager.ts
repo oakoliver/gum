@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/pager
  */
 
-import { Program, KeyPressMsg, KeyCode, KeyMod, Quit, WithAltScreen, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { KeyPressMsg, KeyCode, KeyMod, Quit, WithAltScreen, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newViewport, newTextInput } from '@oakoliver/bubbles';
 import type { ViewportModel, TextInputModel } from '@oakoliver/bubbles';
@@ -11,6 +11,7 @@ import { newStyle, stringWidth, roundedBorder } from '@oakoliver/lipgloss';
 import type { Style } from '@oakoliver/lipgloss';
 import { flagStr, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
+import { runProgram, exitTimedOut } from '../internal/program.js';
 import { extractStyleOptions, toLipgloss, parsePadding } from '../style.js';
 import { readStdin, isStdinEmpty } from '../internal/stdin.js';
 import { STATUS_ABORTED } from '../internal/exit.js';
@@ -368,8 +369,8 @@ function createModel(parsed: ParsedArgs): PagerModel {
 
 export async function run(parsed: ParsedArgs): Promise<void> {
   const model = createModel(parsed);
-  const p = new Program(model, WithAltScreen());
-  const final = await p.run() as PagerModel;
+  const { model: final, timedOut } = await runProgram(model, parsed.flags, { output: process.stdout, extra: [WithAltScreen()] });
+  if (timedOut) exitTimedOut();
 
   if (final.aborted) {
     process.exit(STATUS_ABORTED);

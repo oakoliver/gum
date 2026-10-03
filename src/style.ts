@@ -64,8 +64,8 @@ export function toLipgloss(opts: StyleOptions): Style {
     s = s.align(alignMap[opts.align]);
   }
 
-  if (opts.border && borderMap[opts.border]) {
-    s = s.border(opts.border as any);
+  if (opts.border && opts.border !== 'none' && borderMap[opts.border]) {
+    s = s.border(borderMap[opts.border]);
   }
 
   if (opts.height !== undefined && opts.height > 0) s = s.height(opts.height);
@@ -93,25 +93,43 @@ export function toLipgloss(opts: StyleOptions): Style {
 /**
  * Extract style options from CLI flags with a given prefix.
  * e.g., prefix "cursor" reads --cursor.foreground, --cursor.bold, etc.
+ * `defaults` are the upstream per-component defaults (Kong's
+ * `set:"defaultForeground=212"`), used when the flag is not given.
  */
-export function extractStyleOptions(flags: Record<string, any>, prefix: string): StyleOptions {
+export function extractStyleOptions(
+  flags: Record<string, any>,
+  prefix: string,
+  defaults: StyleOptions = {},
+): StyleOptions {
   const get = (key: string) => flags[`${prefix}.${key}`] ?? flags[`${prefix}-${key}`];
+  const str = (key: string, fallback?: string) => {
+    const v = get(key);
+    return typeof v === 'string' ? v : fallback;
+  };
+  const int = (key: string, fallback?: number) => {
+    const v = get(key);
+    return v !== undefined ? parseInt(String(v), 10) : fallback;
+  };
+  const bool = (key: string, fallback = false) => {
+    const v = get(key);
+    return v === undefined ? fallback : v === true || v === 'true';
+  };
 
   return {
-    foreground: get('foreground') as string | undefined,
-    background: get('background') as string | undefined,
-    border: get('border') as string | undefined,
-    borderBackground: get('border-background') ?? get('borderBackground') as string | undefined,
-    borderForeground: get('border-foreground') ?? get('borderForeground') as string | undefined,
-    align: get('align') as string | undefined,
-    height: get('height') !== undefined ? parseInt(get('height'), 10) : undefined,
-    width: get('width') !== undefined ? parseInt(get('width'), 10) : undefined,
-    margin: get('margin') as string | undefined,
-    padding: get('padding') as string | undefined,
-    bold: get('bold') === true || get('bold') === 'true',
-    faint: get('faint') === true || get('faint') === 'true',
-    italic: get('italic') === true || get('italic') === 'true',
-    strikethrough: get('strikethrough') === true || get('strikethrough') === 'true',
-    underline: get('underline') === true || get('underline') === 'true',
+    foreground: str('foreground', defaults.foreground),
+    background: str('background', defaults.background),
+    border: str('border', defaults.border),
+    borderBackground: str('border-background') ?? str('borderBackground', defaults.borderBackground),
+    borderForeground: str('border-foreground') ?? str('borderForeground', defaults.borderForeground),
+    align: str('align', defaults.align),
+    height: int('height', defaults.height),
+    width: int('width', defaults.width),
+    margin: str('margin', defaults.margin),
+    padding: str('padding', defaults.padding),
+    bold: bool('bold', defaults.bold),
+    faint: bool('faint', defaults.faint),
+    italic: bool('italic', defaults.italic),
+    strikethrough: bool('strikethrough', defaults.strikethrough),
+    underline: bool('underline', defaults.underline),
   };
 }
