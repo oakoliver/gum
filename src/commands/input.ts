@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/input (v0.17.0)
  */
 
-import { KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { KeyPressMsg, KeyCode, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newTextInput, EchoMode, newHelp, newBinding, withKeys, withHelp } from '@oakoliver/bubbles';
 import type { TextInputModel } from '@oakoliver/bubbles';
@@ -72,7 +72,8 @@ export async function run(parsed: ParsedArgs): Promise<void> {
         this.textInput.setWidth(msg.width - 1 - stringWidth(this.textInput.prompt) - padding[1] - padding[3]);
       }
       if (msg instanceof KeyPressMsg) {
-        if (msg.mod & KeyMod.Ctrl && msg.text === 'c') {
+        // Terminals send Ctrl+C with no text, so match the key, not msg.text.
+        if (msg.toString() === 'ctrl+c') {
           this.aborted = true;
           this.quitting = true;
           return [this, () => Quit()];
