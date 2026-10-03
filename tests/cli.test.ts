@@ -200,3 +200,31 @@ describe("gum spin", () => {
     expect(result.stderr).toContain("definitely-not-a-command-xyz");
   });
 });
+
+describe("gum <command> --help", () => {
+  const commands = ["choose", "confirm", "file", "format", "input", "join", "log", "pager", "spin", "style", "table", "write"];
+
+  test("prints the command's usage and flags without running it", () => {
+    for (const command of commands) {
+      const proc = Bun.spawnSync(["bun", "src/cli.ts", command, "--help"], {
+        cwd: `${import.meta.dir}/..`,
+        stdin: "ignore",
+        timeout: 5000,
+      });
+      const out = proc.stdout.toString();
+      expect({ command, exitCode: proc.exitCode }).toEqual({ command, exitCode: 0 });
+      expect(out).toStartWith(`Usage: gum ${command}`);
+      expect(out).toContain("-h, --help");
+    }
+  });
+
+  test("lists implemented flags with their defaults and env vars", () => {
+    expect(gum("choose", "-h")).toContain("--limit=1");
+    expect(gum("input", "--help")).toMatch(/--prompt="?> "?\s+Prompt to display \(\$GUM_INPUT_PROMPT\)/);
+    expect(gum("style", "--help")).toContain("--border=none");
+  });
+
+  test("leaves --help after -- to the command spin runs", () => {
+    expect(gum("spin", "--show-output", "--", "echo", "--help").trim()).toBe("--help");
+  });
+});

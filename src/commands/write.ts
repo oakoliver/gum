@@ -86,7 +86,8 @@ export async function run(parsed: ParsedArgs): Promise<void> {
         this.textarea.setWidth(msg.width - right - left);
       }
       if (msg instanceof KeyPressMsg) {
-        if (msg.mod & KeyMod.Ctrl && msg.text === 'c') {
+        // Terminals send Ctrl+C with no text, so match the key, not msg.text.
+        if (msg.toString() === 'ctrl+c') {
           this.aborted = true;
           this.quitting = true;
           return [this, () => Quit()];

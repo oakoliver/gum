@@ -31,10 +31,10 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@oakoliver/bubbletea": "^1.0.0",
-    "@oakoliver/bubbles": "^1.0.0",
-    "@oakoliver/lipgloss": "^1.0.0",
-    "@oakoliver/glamour": "^1.0.0"
+    "@oakoliver/bubbletea": "^1.2.0",
+    "@oakoliver/bubbles": "^1.2.2",
+    "@oakoliver/lipgloss": "^1.1.2",
+    "@oakoliver/glamour": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^20",

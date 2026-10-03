@@ -118,6 +118,14 @@ describe.skipIf(!hasScript)("interactive commands with piped input", () => {
     expect(await inPty(run("bun src/cli.ts write"), ["x", "\x1b"])).toContain("[exit=1]");
   }, 40000);
 
+  test("input and write: ctrl+c aborts with exit 130, like choose and confirm", async () => {
+    for (const cmd of ["input", "write"]) {
+      const out = await inPty(run(`bun src/cli.ts ${cmd} --value draft`), ["\x03"]);
+      expect(out).not.toMatch(/^draft$/m);
+      expect(out).toContain("[exit=130]");
+    }
+  }, 40000);
+
   test("table: selects a row inline without taking over the screen", async () => {
     const out = await inPty(
       // stderr (the UI) stays on the terminal so the frame is captured
