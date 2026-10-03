@@ -86,5 +86,12 @@ describe.skipIf(!hasScript)("interactive commands with piped input", () => {
     expect(await inPty(run("bun src/cli.ts confirm --timeout 500ms --default=false Proceed?"), [])).toContain("[exit=1]");
     expect(await inPty(run("bun src/cli.ts confirm --timeout 500ms Proceed?"), [])).toContain("[exit=0]");
   }, 30000);
+
+  test("input: piped stdin is the initial value; esc exits 1 without output", async () => {
+    expect(await inPty(run("echo hello | bun src/cli.ts input"), [" world", "\r"])).toMatch(/^hello world$/m);
+    const out = await inPty(run("bun src/cli.ts input --value draft"), ["\x1b"]);
+    expect(out).not.toMatch(/^draft$/m);
+    expect(out).toContain("[exit=1]");
+  }, 30000);
 });
 

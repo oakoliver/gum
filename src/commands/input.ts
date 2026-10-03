@@ -1,148 +1,112 @@
 /**
  * gum input — Single-line text input.
- * Port of charmbracelet/gum/input
+ * Port of charmbracelet/gum/input (v0.17.0)
  */
 
 import { KeyPressMsg, KeyCode, KeyMod, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
-import { newTextInput, EchoMode } from '@oakoliver/bubbles';
+import { newTextInput, EchoMode, newHelp, newBinding, withKeys, withHelp } from '@oakoliver/bubbles';
 import type { TextInputModel } from '@oakoliver/bubbles';
-import { newStyle } from '@oakoliver/lipgloss';
+import { newStyle, joinVertical, stringWidth, Top } from '@oakoliver/lipgloss';
 import { flagStr, flagInt, flagBool, flagWithEnv } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
 import { runProgram, exitTimedOut } from '../internal/program.js';
-import { extractStyleOptions, toLipgloss } from '../style.js';
+import { extractStyleOptions, toLipgloss, parsePadding } from '../style.js';
+import { readStdin, isStdinEmpty } from '../internal/stdin.js';
 import { STATUS_ABORTED } from '../internal/exit.js';
 
 interface InputModel extends Model {
   textInput: TextInputModel;
   aborted: boolean;
   quitting: boolean;
-  header: string;
-  headerStyle: ReturnType<typeof newStyle>;
-  autoWidth: boolean;
-  width: number;
+  submitted: boolean;
 }
 
-function createModel(parsed: ParsedArgs): InputModel {
+export async function run(parsed: ParsedArgs): Promise<void> {
   const flags = parsed.flags;
 
   const ti = newTextInput();
-  ti.placeholder = flagWithEnv(flags, 'placeholder', 'GUM_INPUT_PLACEHOLDER', 'Type something...');
-  ti.prompt = flagWithEnv(flags, 'prompt', 'GUM_INPUT_PROMPT', '> ');
-
-  const value = flagStr(flags, 'value', '');
+  // The initial value comes from --value, else from piped stdin.
+  let value = flagStr(flags, 'value', '');
+  if (!value && !isStdinEmpty()) value = readStdin({ stripAnsi: flagBool(flags, 'strip-ansi', true) });
   if (value) ti.setValue(value);
 
-  const charLimit = flagInt(flags, 'char-limit', 400);
-  ti.charLimit = charLimit;
-
-  const echoModeStr = flagStr(flags, 'echo-mode', 'normal');
-  switch (echoModeStr) {
-    case 'password': ti.echoMode = EchoMode.EchoPassword; break;
-    case 'none': ti.echoMode = EchoMode.EchoNone; break;
-    default: ti.echoMode = EchoMode.EchoNormal; break;
+  ti.prompt = flagWithEnv(flags, 'prompt', 'GUM_INPUT_PROMPT', '> ');
+  ti.placeholder = flagWithEnv(flags, 'placeholder', 'GUM_INPUT_PLACEHOLDER', 'Type something...');
+  ti.charLimit = flagInt(flags, 'char-limit', 400);
+  if (flagBool(flags, 'password', false)) {
+    ti.echoMode = EchoMode.EchoPassword;
+    ti.echoCharacter = '•';
   }
 
-  const password = flagBool(flags, 'password', false);
-  if (password) ti.echoMode = EchoMode.EchoPassword;
+  const width = flagInt(flags, 'width', 0);
+  const autoWidth = width < 1;
+  if (!autoWidth) ti.setWidth(width);
 
-  const widthFlag = flagInt(flags, 'width', 0);
-  const autoWidth = widthFlag === 0;
-
-  if (!autoWidth) {
-    ti.setWidth(widthFlag);
-  }
-
-  const header = flagStr(flags, 'header', '');
-  const headerStyle = toLipgloss(extractStyleOptions(flags, 'header'));
-
-  // Apply prompt style
-  const promptStyleOpts = extractStyleOptions(flags, 'prompt');
-  const promptStyle = toLipgloss(promptStyleOpts);
   const styles = ti.styles();
-  styles.focused.prompt = promptStyle;
+  styles.focused.prompt = toLipgloss(extractStyleOptions(flags, 'prompt'));
+  styles.focused.placeholder = toLipgloss(extractStyleOptions(flags, 'placeholder', { foreground: '240' }));
+  styles.cursor.color = extractStyleOptions(flags, 'cursor', { foreground: '212' }).foreground ?? null;
+  const cursorMode = flagStr(flags, 'cursor.mode', 'blink');
+  styles.cursor.blink = cursorMode === 'blink';
   ti.setStyles(styles);
-
-  // Apply cursor style
-  const cursorStyleOpts = extractStyleOptions(flags, 'cursor');
-  const cursorStyle = toLipgloss(cursorStyleOpts);
-  const curStyles = ti.styles();
-  // Apply foreground color to cursor if available
-  const cursorFg = flagStr(flags, 'cursor.foreground', '');
-  if (cursorFg) {
-    curStyles.cursor.color = cursorFg;
-  }
-  ti.setStyles(curStyles);
-
   ti.focus();
 
-  return {
+  const header = flagStr(flags, 'header', '');
+  const headerStyle = toLipgloss(extractStyleOptions(flags, 'header', { foreground: '240' }));
+  const showHelp = flagBool(flags, 'show-help', true);
+  const padding = parsePadding(flagStr(flags, 'padding', '0 0'));
+  const help = newHelp();
+  const submitKey = newBinding(withKeys('enter'), withHelp('enter', 'submit'));
+
+  const model: InputModel = {
     textInput: ti,
     aborted: false,
     quitting: false,
-    header,
-    headerStyle,
-    autoWidth,
-    width: widthFlag || 80,
+    submitted: false,
     init() {
       return null;
     },
     update(msg: Msg): [Model, Cmd] {
-      if (msg instanceof WindowSizeMsg) {
-        this.width = msg.width;
-        if (this.autoWidth) {
-          this.textInput.setWidth(msg.width - 1);
-        }
-        return [this, null];
+      if (msg instanceof WindowSizeMsg && autoWidth) {
+        this.textInput.setWidth(msg.width - 1 - stringWidth(this.textInput.prompt) - padding[1] - padding[3]);
       }
-
       if (msg instanceof KeyPressMsg) {
-        // ctrl+c — abort
-        if (msg.code === KeyCode.Escape || (msg.mod & KeyMod.Ctrl && msg.text === 'c')) {
+        if (msg.mod & KeyMod.Ctrl && msg.text === 'c') {
           this.aborted = true;
           this.quitting = true;
           return [this, () => Quit()];
         }
-
-        // esc — quit without submitting
         if (msg.code === KeyCode.Escape) {
           this.quitting = true;
           return [this, () => Quit()];
         }
-
-        // enter — submit
         if (msg.code === KeyCode.Enter) {
           this.quitting = true;
+          this.submitted = true;
           return [this, () => Quit()];
         }
       }
-
-      const [updatedTi, cmd] = this.textInput.update(msg);
-      this.textInput = updatedTi;
+      const [updated, cmd] = this.textInput.update(msg);
+      this.textInput = updated;
       return [this, cmd];
     },
     view(): string {
       if (this.quitting) return '';
-
-      let out = '';
-      if (this.header) {
-        out += this.headerStyle.render(this.header) + '\n';
-      }
-      out += this.textInput.view();
-      return out;
+      const parts: string[] = [];
+      if (header) parts.push(headerStyle.render(header));
+      parts.push(this.textInput.view());
+      if (showHelp) parts.push('', help.shortHelpView([submitKey]));
+      return newStyle().padding(...padding).render(joinVertical(Top, ...parts));
     },
   };
-}
 
-export async function run(parsed: ParsedArgs): Promise<void> {
-  const model = createModel(parsed);
-  const { model: final, timedOut } = await runProgram(model, parsed.flags);
+  const { model: final, timedOut } = await runProgram(model, flags);
   if (timedOut) exitTimedOut();
-
-  if (final.aborted) {
-    process.exit(STATUS_ABORTED);
+  if (final.aborted) process.exit(STATUS_ABORTED);
+  if (!final.submitted) {
+    console.error('not submitted');
+    process.exit(1);
   }
-
   process.stdout.write(final.textInput.value() + '\n');
 }
