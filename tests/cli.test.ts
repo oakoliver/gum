@@ -81,3 +81,48 @@ describe("gum format", () => {
     );
   });
 });
+
+describe("gum log", () => {
+  function log(...args: string[]): { stderr: string; exitCode: number } {
+    const proc = Bun.spawnSync(["bun", "src/cli.ts", "log", ...args], { cwd: `${import.meta.dir}/..` });
+    return { stderr: stripAnsi(proc.stderr.toString()).trimEnd(), exitCode: proc.exitCode ?? -1 };
+  }
+
+  test("--structured takes alternating key and value arguments", () => {
+    expect(log("--structured", "--level", "debug", "Creating file...", "name", "file.txt").stderr).toBe(
+      "DEBUG Creating file... name=file.txt",
+    );
+    expect(log("-s", "-l", "info", "Upload", "path", "/tmp/my file", "dangling").stderr).toBe(
+      'INFO Upload path="/tmp/my file" dangling="missing value"',
+    );
+  });
+
+  test("without --structured every argument is part of the message", () => {
+    expect(log("--level", "error", "--prefix", "build", "Failed", "to", "compile").stderr).toBe("ERROR build: Failed to compile");
+  });
+
+  test("the default level is none, which prints no level", () => {
+    expect(log("just", "a", "message").stderr).toBe("just a message");
+  });
+
+  test("--format applies printf verbs", () => {
+    expect(log("-f", "-l", "info", "%s has %d items", "cart", "3").stderr).toBe("INFO cart has 3 items");
+  });
+
+  test("--min-level filters lower levels and fatal exits 1", () => {
+    expect(log("--min-level", "warn", "-l", "info", "hidden").stderr).toBe("");
+    expect(log("-l", "fatal", "boom")).toEqual({ stderr: "FATAL boom", exitCode: 1 });
+  });
+
+  test("json and logfmt formatters", () => {
+    expect(log("--formatter", "json", "-s", "-l", "info", "hello", "user", "ann").stderr).toBe(
+      '{"level":"info","msg":"hello","user":"ann"}',
+    );
+    expect(log("--formatter", "logfmt", "-s", "-l", "warn", "hi there", "k", "v v").stderr).toBe('level=warn msg="hi there" k="v v"');
+  });
+
+  test("--time accepts Go layouts and named formats", () => {
+    expect(log("--time", "2006-01-02", "x").stderr).toMatch(/^\d{4}-\d{2}-\d{2} x$/);
+    expect(log("--time", "kitchen", "x").stderr).toMatch(/^\d{1,2}:\d{2}(AM|PM) x$/);
+  });
+});
