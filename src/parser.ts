@@ -13,24 +13,39 @@ export interface ParsedArgs {
   args: string[];
 }
 
-/** Known boolean flags that never take a value argument. */
-const BOOL_FLAGS = new Set([
-  'no-limit', 'no-show-help', 'no-strip-ansi', 'ordered', 'reverse',
-  'no-strict', 'strict', 'select-if-one', 'sort', 'no-sort',
-  'affirmative', 'negative', 'default', 'bold', 'faint', 'italic',
-  'strikethrough', 'underline', 'horizontal', 'vertical',
-  'show-line-numbers', 'soft-wrap', 'show-help', 'strip-ansi',
-  'cursor.bold', 'cursor.faint', 'cursor.italic', 'cursor.strikethrough', 'cursor.underline',
-  'header.bold', 'header.faint', 'header.italic', 'header.strikethrough', 'header.underline',
-  'selected.bold', 'selected.faint', 'selected.italic', 'selected.strikethrough', 'selected.underline',
-  'unselected.bold', 'unselected.faint', 'unselected.italic', 'unselected.strikethrough', 'unselected.underline',
-  'text.bold', 'text.faint', 'text.italic', 'text.strikethrough', 'text.underline',
-  'match.bold', 'match.faint', 'match.italic', 'match.strikethrough', 'match.underline',
-  'indicator.bold', 'indicator.faint', 'indicator.italic', 'indicator.strikethrough', 'indicator.underline',
-  'prompt.bold', 'prompt.faint', 'prompt.italic', 'prompt.strikethrough', 'prompt.underline',
-  'item.bold', 'item.faint', 'item.italic', 'item.strikethrough', 'item.underline',
-  'fuzzy', 'exact',
-]);
+/**
+ * Boolean flags per command, from upstream gum v0.17.0. A boolean flag never
+ * consumes the next argument as its value. Style flags ending in .bold,
+ * .faint, .italic, .strikethrough or .underline are boolean everywhere.
+ */
+const BOOL_FLAGS: Record<string, ReadonlySet<string>> = {
+  choose: new Set(['no-limit', 'ordered', 'show-help', 'select-if-one', 'strip-ansi']),
+  confirm: new Set(['default', 'show-output', 'show-help']),
+  file: new Set(['all', 'permissions', 'size', 'file', 'directory', 'show-help']),
+  format: new Set(['strip-ansi']),
+  input: new Set(['password', 'show-help', 'strip-ansi']),
+  join: new Set(['horizontal', 'vertical']),
+  log: new Set(['format', 'structured']),
+  pager: new Set(['show-line-numbers', 'soft-wrap']),
+  spin: new Set(['show-output', 'show-error', 'show-stdout', 'show-stderr']),
+  style: new Set(['trim', 'strip-ansi', 'bold', 'faint', 'italic', 'strikethrough', 'underline']),
+  table: new Set(['print', 'show-help', 'hide-count', 'lazy-quotes']),
+  write: new Set(['show-cursor-line', 'show-line-numbers', 'show-help', 'strip-ansi']),
+};
+
+/** Short flag aliases per command, from upstream gum v0.17.0. */
+const SHORT_FLAGS: Record<string, Readonly<Record<string, string>>> = {
+  file: { c: 'cursor', a: 'all', p: 'permissions', s: 'size' },
+  format: { l: 'language', t: 'type' },
+  log: { o: 'file', f: 'format', l: 'level', s: 'structured', t: 'time' },
+  spin: { s: 'spinner', a: 'align' },
+  table: { s: 'separator', c: 'columns', w: 'widths', p: 'print', f: 'file', b: 'border', r: 'return-column' },
+};
+
+/** List flags that may be repeated; repeated values are joined with commas. */
+const LIST_FLAGS = new Set(['selected', 'columns', 'widths']);
+
+const STYLE_BOOL_SUFFIXES = ['bold', 'faint', 'italic', 'strikethrough', 'underline'];
 
 /**
  * Parse argv into a structured command + flags + args.
@@ -51,84 +66,82 @@ export function parseArgs(argv: string[]): ParsedArgs {
     return { command: 'version', flags: {}, args: [] };
   }
 
+  const boolFlags = BOOL_FLAGS[command] ?? new Set<string>();
+  const shortFlags = SHORT_FLAGS[command] ?? {};
+  const isBool = (key: string) =>
+    boolFlags.has(key) || (key.includes('.') && STYLE_BOOL_SUFFIXES.includes(key.split('.').pop() ?? ''));
+
   const flags: Record<string, string | boolean> = {};
   const args: string[] = [];
-  let i = 1;
-  let pastFlags = false;
+  const set = (key: string, value: string | boolean) => {
+    const prev = flags[key];
+    flags[key] = LIST_FLAGS.has(key) && typeof prev === 'string' && typeof value === 'string'
+      ? `${prev},${value}`
+      : value;
+  };
 
+  let i = 1;
   while (i < argv.length) {
     const arg = argv[i];
 
-    if (pastFlags) {
-      args.push(arg);
-      i++;
-      continue;
-    }
-
     // -- signals end of flags
     if (arg === '--') {
-      pastFlags = true;
-      i++;
-      continue;
+      args.push(...argv.slice(i + 1));
+      break;
     }
+
+    let key: string | undefined;
+    let inlineValue: string | undefined;
 
     if (arg.startsWith('--')) {
       const eqIndex = arg.indexOf('=');
+      key = eqIndex === -1 ? arg.substring(2) : arg.substring(2, eqIndex);
+      inlineValue = eqIndex === -1 ? undefined : arg.substring(eqIndex + 1);
 
-      if (eqIndex !== -1) {
-        // --flag=value
-        const key = arg.substring(2, eqIndex);
-        const value = arg.substring(eqIndex + 1);
-        flags[key] = value;
+      // --no-X negates the boolean flag X (Kong's negatable flags)
+      if (inlineValue === undefined && key.startsWith('no-') && !isBool(key)) {
+        flags[key.substring(3)] = false;
         i++;
-      } else {
-        const key = arg.substring(2);
-
-        // Handle --no-X negation pattern
-        if (key.startsWith('no-') && !BOOL_FLAGS.has(key)) {
-          const positiveKey = key.substring(3);
-          flags[positiveKey] = false;
-          i++;
-          continue;
-        }
-
-        // Check if this is a known boolean flag
-        if (isBoolFlag(key)) {
-          flags[key] = true;
-          i++;
-        } else if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
-          // Next arg is the value
-          flags[key] = argv[i + 1];
-          i += 2;
-        } else {
-          // No value — treat as boolean
-          flags[key] = true;
-          i++;
-        }
+        continue;
       }
-    } else {
-      // Positional argument
+    } else if (/^-[a-zA-Z]/.test(arg)) {
+      const eqIndex = arg.indexOf('=');
+      const letters = eqIndex === -1 ? arg.substring(1) : arg.substring(1, eqIndex);
+      inlineValue = eqIndex === -1 ? undefined : arg.substring(eqIndex + 1);
+      // Clustered boolean shorts: -ap means -a -p
+      const names = [...letters].map((c) => shortFlags[c]);
+      if (names.some((n) => n === undefined)) {
+        args.push(arg);
+        i++;
+        continue;
+      }
+      for (const name of names.slice(0, -1)) set(name, true);
+      key = names[names.length - 1];
+    }
+
+    if (key === undefined) {
       args.push(arg);
+      i++;
+      continue;
+    }
+
+    if (inlineValue !== undefined) {
+      set(key, isBool(key) ? inlineValue === 'true' || inlineValue === '1' : inlineValue);
+      i++;
+    } else if (isBool(key)) {
+      set(key, true);
+      i++;
+    } else if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+      set(key, argv[i + 1]);
+      i += 2;
+    } else {
+      // No value — treat as boolean
+      set(key, true);
       i++;
     }
   }
 
   return { command, flags, args };
-}
-
-function isBoolFlag(key: string): boolean {
-  if (BOOL_FLAGS.has(key)) return true;
-
-  // Style boolean suffixes
-  const parts = key.split('.');
-  if (parts.length === 2) {
-    const suffix = parts[1];
-    if (['bold', 'faint', 'italic', 'strikethrough', 'underline'].includes(suffix)) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 /**
