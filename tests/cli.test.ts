@@ -50,7 +50,8 @@ describe("gum style", () => {
 
   test("keeps its colors when the output is captured, so styled blocks compose", () => {
     const proc = Bun.spawnSync(["bun", "src/cli.ts", "style", "--foreground", "212", "x"], { cwd: `${import.meta.dir}/..` });
-    expect(proc.stdout.toString()).toBe("\x1b[38;5;212mx\x1b[0m\n");
+    // lipgloss resets with ESC[0m before 1.1.2 and ESC[m (as upstream v2) after.
+    expect(proc.stdout.toString()).toMatch(/^\x1b\[38;5;212mx\x1b\[0?m\n$/);
   });
 
   test("fails without input", () => {
