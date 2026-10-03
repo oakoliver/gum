@@ -71,7 +71,7 @@ async function main(): Promise<void> {
   }
   
   const command = args[0];
-  const parsed = parseArgs(args.slice(1));
+  const parsed = parseArgs(args);
   
   try {
     switch (command) {
