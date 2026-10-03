@@ -67,10 +67,24 @@ describe.skipIf(!hasScript)("interactive commands with piped input", () => {
     expect(out).toContain("[exit=1]");
   }, 20000);
 
+  test("confirm: enter keeps the default, n declines, toggling switches", async () => {
+    expect(await inPty(run("bun src/cli.ts confirm Proceed?"), ["\r"])).toContain("[exit=0]");
+    expect(await inPty(run("bun src/cli.ts confirm Proceed?"), ["n"])).toContain("[exit=1]");
+    expect(await inPty(run("bun src/cli.ts confirm Proceed?"), ["\t", "\r"])).toContain("[exit=1]");
+  }, 30000);
 
+  test("confirm --show-output prints the prompt and the answer", async () => {
+    const out = await inPty(run("bun src/cli.ts confirm --show-output --affirmative Sure Proceed?"), ["y"]);
+    expect(out).toMatch(/^Proceed\? Sure$/m);
+  }, 20000);
 
   test("--timeout ends the program with exit 124", async () => {
     expect(await inPty(run("bun src/cli.ts choose --timeout 500ms a b"), [])).toContain("[exit=124]");
   }, 20000);
+
+  test("confirm --timeout keeps the default", async () => {
+    expect(await inPty(run("bun src/cli.ts confirm --timeout 500ms --default=false Proceed?"), [])).toContain("[exit=1]");
+    expect(await inPty(run("bun src/cli.ts confirm --timeout 500ms Proceed?"), [])).toContain("[exit=0]");
+  }, 30000);
 });
 
