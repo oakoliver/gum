@@ -93,5 +93,11 @@ describe.skipIf(!hasScript)("interactive commands with piped input", () => {
     expect(out).not.toMatch(/^draft$/m);
     expect(out).toContain("[exit=1]");
   }, 30000);
+
+  test("write: ctrl+j inserts a newline, enter submits, piped stdin is the value", async () => {
+    expect(await inPty(run("bun src/cli.ts write"), ["one", "\n", "two", "\r"])).toMatch(/^one\ntwo$/m);
+    expect(await inPty(run("printf 'from stdin' | bun src/cli.ts write"), ["\r"])).toMatch(/^from stdin$/m);
+    expect(await inPty(run("bun src/cli.ts write"), ["x", "\x1b"])).toContain("[exit=1]");
+  }, 40000);
 });
 
