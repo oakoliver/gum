@@ -225,6 +225,7 @@ describe("gum <command> --help", () => {
   });
 
   test("leaves --help after -- to the command spin runs", () => {
-    expect(gum("spin", "--show-output", "--", "echo", "--help").trim()).toBe("--help");
+    // printf, not echo: GNU coreutils' /bin/echo prints its own help for a lone --help.
+    expect(gum("spin", "--show-output", "--", "printf", "%s\\n", "--help").trim()).toBe("--help");
   });
 });
