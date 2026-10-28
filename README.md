@@ -10,6 +10,8 @@ A tool for glamorous shell scripts. A TypeScript port of [charmbracelet/gum](htt
 
 Built on [@oakoliver/bubbletea](https://www.npmjs.com/package/@oakoliver/bubbletea), [@oakoliver/bubbles](https://www.npmjs.com/package/@oakoliver/bubbles), [@oakoliver/lipgloss](https://www.npmjs.com/package/@oakoliver/lipgloss), and [@oakoliver/glamour](https://www.npmjs.com/package/@oakoliver/glamour). Runs on Node.js and Bun.
 
+**Read the article:** [Getting Started with gum: Interactive Shell Scripts](https://engineering.oakoliver.com/articles/getting-started-gum-interactive-shell-scripts)
+
 ## Install
 
 ```bash
