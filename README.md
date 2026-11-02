@@ -1,6 +1,6 @@
 # @oakoliver/gum
 
-A tool for glamorous shell scripts. A TypeScript port of [charmbracelet/gum](https://github.com/charmbracelet/gum) v0.17.0.
+A tool for glamorous shell scripts. A TypeScript port of [charmbracelet/gum](https://github.com/charmbracelet/gum) v2.0.2.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/oakoliver/gum/main/assets/commit.gif" width="720" alt="examples/commit.sh: gum choose picks the commit type, gum input asks for the scope and summary, gum write takes a two-line description, gum confirm asks to commit, and gum style prints the git command in a pink rounded box">
@@ -37,7 +37,7 @@ npx @oakoliver/gum choose "Yes" "No"
 | [`table`](#table) | Display and select rows from CSV data |
 | [`write`](#write) | Prompt for multi-line input |
 
-`filter` from upstream gum is not implemented yet.
+`filter` from upstream gum is not implemented yet. See [Upstream parity](#upstream-parity) for what else differs.
 
 Interactive commands draw on stderr and print only the result on stdout, so `RESULT=$(gum choose …)` works. When stdin is piped (for example options for `choose`), keys are read from the terminal. `Ctrl+C` aborts with exit code `130`, `Esc` quits with exit code `1` (`table` exits `0` with an empty row), and `--timeout` (a duration such as `30s`) exits `124`. Every command lists its flags, defaults and style flags with `--help`, for example `gum choose --help`.
 
@@ -88,7 +88,7 @@ echo "Shipped :rocket:" | gum format --type emoji
 cat main.go | gum format --type code --language go
 ```
 
-Flags: `--type`/`-t` (`markdown` (default), `code`, `emoji`, `template`), `--theme` (default `pink`), `--language`/`-l`, `--strip-ansi`. Templates take termenv's functions (`Bold`, `Faint`, `Italic`, `Underline`, `CrossOut`, `Color`, `Foreground`, `Background`, …), nested with parentheses; emoji covers common shortcodes.
+Flags: `--type`/`-t` (`markdown` (default), `code`, `emoji`, `template`), `--theme` (default `pink`), `--language`/`-l`, `--strip-ansi`. `--type code` takes its style from `GLAMOUR_STYLE` (default `dark`). Templates take the styling functions `Bold`, `Faint`, `Italic`, `Underline`, `Blink`, `Reverse`, `CrossOut`, `Overline` (a no-op, as in upstream), `Color`, `Foreground` and `Background`, nested with parentheses; `Color` takes a foreground, or a foreground and a background, before the text. Emoji covers common shortcodes.
 
 <img src="https://raw.githubusercontent.com/oakoliver/gum/main/assets/format.png" width="760" alt="gum format rendering markdown with a heading, bold and italic text, inline code and a table, then a template with bold, italic and colored text, then emoji shortcodes">
 
@@ -148,7 +148,7 @@ gum style --foreground 212 --border-foreground 212 --border double \
   "Bubble Gum (1¢)" "So sweet and so fresh!"
 ```
 
-Arguments are joined one per line. Colors stay in captured output, so styled blocks compose with `gum join`:
+Arguments are joined one per line. Colors stay in captured output, so styled blocks compose with `gum join` (see [Colors](#colors)):
 
 <img src="https://raw.githubusercontent.com/oakoliver/gum/main/assets/style.png" width="560" alt="examples/style.sh: a pink double-bordered title block joined above two rounded boxes labelled Bubbletea and Lipgloss with purple and teal borders">
 
@@ -175,9 +175,31 @@ gum write --placeholder "Details of this change" > body.txt
 
 Flags: `--placeholder` (env `GUM_WRITE_PLACEHOLDER`), `--value` (or piped stdin), `--char-limit` (default `0`, unlimited), `--max-lines`, `--width`, `--height` (default `5`), `--show-line-numbers`, `--prompt`, `--header`, `--cursor.mode`, `--padding`, `--show-help`, `--timeout`, plus `base`, `placeholder`, `prompt`, `cursor`, `cursor-line`, `cursor-line-number`, `line-number`, `end-of-buffer`, and `header` style flags.
 
-## Fixed since 1.0.2
+## Colors
 
-1.0.2 dropped the first argument of every command, ignored `style --border` and `format --type`, lost `log` key/value pairs, printed only the header in `table --print`, joined vertically by default, drew interactive UIs on stdout (breaking `$(gum choose …)`), could not read keys when stdin was piped, ignored `Ctrl+C` in `input` and `write`, and had no `gum <command> --help`. These are fixed in the next release.
+`style`, `join` and `format` write through a color profile writer, as upstream v2 does. Colors are downgraded to what the terminal supports (`COLORTERM`, `TERM`), `NO_COLOR` removes colors and keeps bold, italic and the like, `TERM=dumb` prints plain text, and `CLICOLOR_FORCE=1` keeps colors where there is no `TERM`. `choose` and `table` strip their result when stdout is not a terminal.
+
+Unlike upstream v2.0.2, `style`, `join` and `format` keep their colors when stdout is a pipe or a command substitution. Upstream strips them there, which breaks `$(gum style …)` and `gum format | less -R` ([gum#1127](https://github.com/charmbracelet/gum/issues/1127), [gum#1131](https://github.com/charmbracelet/gum/issues/1131), both open); this port keeps what v0.17.0 did. Set `NO_COLOR=1` to drop the colors.
+
+## Upstream parity
+
+This port matches [gum v2.0.2](https://github.com/charmbracelet/gum/releases/tag/v2.0.2), which is v0.17.0 plus the move to Bubble Tea and Lip Gloss v2. Upstream calls v2.0.0 a release with no UX changes; the diff shows a few ([CHANGELOG](CHANGELOG.md) lists each). `gum <command> --help` is generated from upstream's v2.0.2 option structs, and the output of `style`, `join` and `format` is checked byte for byte against the real v2.0.2 binary in every color depth (`tests/fixtures/`, regenerated by `scripts/gen-upstream-fixtures.ts`).
+
+Not ported:
+
+- `filter` (the fuzzy matcher is in `src/fuzzy.ts`, the command is not).
+- Opening `$EDITOR` with `Ctrl+E` in `write`.
+- `completion`, `man` and `version` subcommands, and Go's full `text/template` language in `format` (only the styling functions).
+
+Differs on purpose:
+
+- `style`, `join` and `format` keep their colors in a pipe (see [Colors](#colors)).
+- `choose --no-limit` toggles with `Space`. Upstream v2.0.2 does not, because it binds a literal space where Bubble Tea v2 names the key `space` ([gum#1143](https://github.com/charmbracelet/gum/issues/1143)).
+- `format` adds a trailing newline, and renders emoji shortcodes from a built-in list rather than with Glamour's emoji extension.
+- `table --print` styles the header row. Upstream styles the first data row (it checks `row == 0` against a header that is row -1), as it did in v0.17.0.
+- Syntax-highlighted code in `format` uses highlight.js through Glamour, so token colors differ from Chroma's.
+
+Also see the [CHANGELOG](CHANGELOG.md).
 
 ## Library use
 

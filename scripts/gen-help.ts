@@ -1,6 +1,6 @@
 /**
  * Generates src/help-data.ts: per-command help built from upstream gum
- * v0.17.0's kong option structs, limited to what this port implements.
+ * v2.0.2's kong option structs, limited to what this port implements.
  *
  *   bun scripts/gen-help.ts
  *
@@ -12,7 +12,7 @@
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const TAG = 'v0.17.0';
+const TAG = 'v2.0.2';
 const ROOT = join(import.meta.dir, '..');
 const COMMANDS = ['choose', 'confirm', 'file', 'format', 'input', 'join', 'log', 'pager', 'spin', 'style', 'table', 'write'];
 

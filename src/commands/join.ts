@@ -7,6 +7,7 @@ import { joinHorizontal, joinVertical } from '@oakoliver/lipgloss';
 import { flagStr, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
 import { alignMap } from '../internal/decode.js';
+import { printStyled } from '../internal/tty.js';
 
 export async function run(parsed: ParsedArgs): Promise<void> {
   const flags = parsed.flags;
@@ -14,5 +15,5 @@ export async function run(parsed: ParsedArgs): Promise<void> {
 
   // Horizontal unless --vertical, as upstream (--horizontal is the default)
   const join = flagBool(flags, 'vertical', false) ? joinVertical : joinHorizontal;
-  process.stdout.write(join(align, ...parsed.args) + '\n');
+  printStyled(join(align, ...parsed.args));
 }

@@ -14,7 +14,7 @@ export interface ParsedArgs {
 }
 
 /**
- * Boolean flags per command, from upstream gum v0.17.0. A boolean flag never
+ * Boolean flags per command, from upstream gum v2.0.2 (unchanged since v0.17.0). A boolean flag never
  * consumes the next argument as its value. Style flags ending in .bold,
  * .faint, .italic, .strikethrough or .underline are boolean everywhere.
  */
@@ -33,7 +33,7 @@ const BOOL_FLAGS: Record<string, ReadonlySet<string>> = {
   write: new Set(['show-cursor-line', 'show-line-numbers', 'show-help', 'strip-ansi']),
 };
 
-/** Short flag aliases per command, from upstream gum v0.17.0. */
+/** Short flag aliases per command, from upstream gum v2.0.2 (unchanged since v0.17.0). */
 const SHORT_FLAGS: Record<string, Readonly<Record<string, string>>> = {
   file: { c: 'cursor', a: 'all', p: 'permissions', s: 'size' },
   format: { l: 'language', t: 'type' },

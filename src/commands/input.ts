@@ -50,6 +50,8 @@ export async function run(parsed: ParsedArgs): Promise<void> {
   const cursorMode = flagStr(flags, 'cursor.mode', 'blink');
   styles.cursor.blink = cursorMode === 'blink';
   ti.setStyles(styles);
+  // `--cursor.mode hide` takes the cursor away, as upstream v2 does.
+  ti.setVirtualCursor(cursorMode !== 'hide');
   ti.focus();
 
   const header = flagStr(flags, 'header', '');

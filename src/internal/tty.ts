@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as tty from 'node:tty';
 import { WithInput, WithOutput } from '@oakoliver/bubbletea';
 import type { ProgramOption } from '@oakoliver/bubbletea';
-import { stripAnsi } from './stdin.js';
+import { ColorProfileWriter, detectColorProfile } from '@oakoliver/lipgloss';
 
 let _isTTY: boolean | undefined;
 
@@ -22,14 +22,38 @@ export function isTTY(): boolean {
 }
 
 /**
- * Print a line, stripping ANSI if stdout is not a TTY.
+ * Upstream's `tty.Writer()` (v2): stdout behind a color profile writer, which
+ * downgrades colors to what the terminal supports, honors NO_COLOR, CLICOLOR
+ * and CLICOLOR_FORCE, and strips every sequence when stdout is not a terminal.
  */
+export function writer(): ColorProfileWriter {
+  return new ColorProfileWriter(process.stdout, detectColorProfile(process.stdout, process.env));
+}
+
+/**
+ * Like `writer()`, but styles survive a pipe or a command substitution. It
+ * still downgrades colors, honors NO_COLOR and CLICOLOR_FORCE and strips
+ * everything for TERM=dumb. Upstream v2 strips here as well, which breaks
+ * `$(gum style ...)` and `gum format | less -R` (charmbracelet/gum#1127, #1131),
+ * so styled output keeps what v0.17.0 did: color follows the environment, not
+ * whether stdout is a pipe.
+ */
+export function styledWriter(): ColorProfileWriter {
+  return new ColorProfileWriter(process.stdout, detectColorProfile({ isTTY: true }, process.env));
+}
+
+/** Print a line to stdout, stripping ANSI when stdout is not a TTY (upstream `tty.Println`). */
 export function println(s: string): void {
-  if (isTTY()) {
-    console.log(s);
-  } else {
-    console.log(stripAnsi(s));
-  }
+  const w = writer();
+  w.write(s + '\n');
+  w.close();
+}
+
+/** Print rendered text to stdout, keeping its styles when stdout is not a TTY. */
+export function printStyled(s: string, newline = true): void {
+  const w = styledWriter();
+  w.write(newline ? s + '\n' : s);
+  w.close();
 }
 
 /**
@@ -52,6 +76,21 @@ export function interactiveOptions(
     } catch {
       // No controlling terminal: keep stdin.
     }
+  } else if (!ttyInput && !tty.isatty(0)) {
+    // Nothing reads keys, and a terminal reply to the startup probes would
+    // land in the shell instead (the raw sequences upstream v2.0.1 and
+    // v2.0.2 stopped leaking), so run without input: no query is sent.
+    options.push(WithInput(null));
   }
-  return { options, close: () => input?.destroy() };
+  return {
+    options,
+    close: () => {
+      if (!input) return;
+      input.destroy();
+      // Bun 1.4 keeps the process alive while a controlling terminal that
+      // stays open has been read from, even after the stream is destroyed.
+      // Node exits on its own and never gets here.
+      setTimeout(() => process.exit(process.exitCode ?? 0), 50).unref();
+    },
+  };
 }

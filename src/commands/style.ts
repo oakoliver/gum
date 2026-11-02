@@ -7,6 +7,7 @@ import { flagStr, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
 import { StyleOptions, toLipgloss, extractStyleOptions } from '../style.js';
 import { readStdin, isStdinEmpty } from '../internal/stdin.js';
+import { printStyled } from '../internal/tty.js';
 
 export async function run(parsed: ParsedArgs): Promise<void> {
   const flags = parsed.flags;
@@ -50,6 +51,8 @@ export async function run(parsed: ParsedArgs): Promise<void> {
 
   const result = style.render(text);
   // Styles stay in the output when it is captured ($(gum style …)), as
-  // upstream, so styled blocks can be composed with gum join.
-  console.log(result);
+  // upstream v0.17.0 did, so styled blocks can be composed with gum join.
+  // Colors follow the environment (NO_COLOR, CLICOLOR_FORCE, TERM) and the
+  // terminal's depth, as upstream v2 does, but not whether stdout is a pipe.
+  printStyled(result);
 }

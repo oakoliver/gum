@@ -57,6 +57,8 @@ export async function run(parsed: ParsedArgs): Promise<void> {
   styles.cursor.color = extractStyleOptions(flags, 'cursor', { foreground: '212' }).foreground ?? styles.cursor.color;
   styles.cursor.blink = flagStr(flags, 'cursor.mode', 'blink') === 'blink';
   ta.setStyles(styles);
+  // `--cursor.mode hide` takes the cursor away, as upstream v2 does.
+  ta.setVirtualCursor(flagStr(flags, 'cursor.mode', 'blink') !== 'hide');
 
   const width = flagInt(flags, 'width', 0);
   const autoWidth = width < 1;

@@ -3,7 +3,7 @@
  * Port of charmbracelet/gum/choose (v0.17.0)
  */
 
-import { KeyPressMsg, Quit, WindowSizeMsg } from '@oakoliver/bubbletea';
+import { BackgroundColorMsg, KeyPressMsg, Quit, RequestBackgroundColor, WindowSizeMsg } from '@oakoliver/bubbletea';
 import type { Model, Cmd, Msg } from '@oakoliver/bubbletea';
 import { newPaginator, PaginatorType, newHelp, newBinding, withKeys, withHelp, withDisabled, matches } from '@oakoliver/bubbles';
 import type { PaginatorModel, HelpModel, Binding } from '@oakoliver/bubbles';
@@ -70,8 +70,9 @@ interface ChooseModel extends Model {
 
 export async function run(parsed: ParsedArgs): Promise<void> {
   const flags = parsed.flags;
-  const subdued = newStyle().foreground('#979797');
-  const verySubdued = newStyle().foreground('#3C3C3C');
+  // The pagination dots follow the terminal's background, which is asked for
+  // on start (upstream v2). Until it answers the background counts as light.
+  let hasDarkBG = false;
 
   const inputDelimiter = flagStr(flags, 'input-delimiter', '\n');
   const outputDelimiter = flagStr(flags, 'output-delimiter', '\n');
@@ -159,8 +160,6 @@ export async function run(parsed: ParsedArgs): Promise<void> {
   paginator.type = PaginatorType.Dots;
   paginator.perPage = height;
   paginator.totalPages = Math.max(1, Math.ceil(items.length / height));
-  paginator.activeDot = subdued.render('•');
-  paginator.inactiveDot = verySubdued.render('•');
   paginator.page = Math.floor(startingIndex / height);
 
   const keymap = defaultKeymap();
@@ -185,9 +184,13 @@ export async function run(parsed: ParsedArgs): Promise<void> {
     submitted: false,
     aborted: false,
     init() {
-      return null;
+      return RequestBackgroundColor;
     },
     update(msg: Msg): [Model, Cmd] {
+      if (msg instanceof BackgroundColorMsg) {
+        hasDarkBG = msg.isDark();
+        return [this, null];
+      }
       if (msg instanceof WindowSizeMsg || !(msg instanceof KeyPressMsg)) return [this, null];
 
       const [start, end] = this.paginator.getSliceBounds(this.items.length);
@@ -274,6 +277,9 @@ export async function run(parsed: ParsedArgs): Promise<void> {
       });
 
       if (this.paginator.totalPages > 1) {
+        const [subdued, verySubdued] = hasDarkBG ? ['#979797', '#3C3C3C'] : ['#847A85', '#DDDADA'];
+        this.paginator.activeDot = newStyle().foreground(subdued).render('•');
+        this.paginator.inactiveDot = newStyle().foreground(verySubdued).render('•');
         s += '\n'.repeat(this.height - this.paginator.itemsOnPage(this.items.length) + 1);
         s += '  ' + this.paginator.view();
       }

@@ -3,10 +3,13 @@
  * Port of charmbracelet/gum/format
  */
 
-import { TermRenderer, withAutoStyle, withStylePath, withWordWrap } from '@oakoliver/glamour';
+import { TermRenderer, withEnvironmentConfig, withStylePath, withWordWrap } from '@oakoliver/glamour';
+import { newStyle } from '@oakoliver/lipgloss';
+import type { Style } from '@oakoliver/lipgloss';
 import { flagStr, flagBool } from '../parser.js';
 import type { ParsedArgs } from '../parser.js';
 import { readStdin, isStdinEmpty } from '../internal/stdin.js';
+import { printStyled } from '../internal/tty.js';
 
 type FormatType = 'markdown' | 'code' | 'emoji' | 'template';
 
@@ -15,7 +18,7 @@ function formatMarkdown(text: string, theme: string): string {
 }
 
 function formatCode(text: string, language: string): string {
-  return new TermRenderer(withAutoStyle(), withWordWrap(0)).render('```' + language + '\n' + text + '\n```');
+  return new TermRenderer(withEnvironmentConfig(), withWordWrap(0)).render('```' + language + '\n' + text + '\n```');
 }
 
 function formatEmoji(text: string): string {
@@ -27,34 +30,38 @@ function formatEmoji(text: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Templates: Go text/template actions with termenv's template functions, as
-// upstream (`{{ Bold "Tasty" }} {{ Color "99" "0" " Gum " }}`).
+// Templates: Go text/template actions with the styling functions upstream v2
+// defines on Lip Gloss (`{{ Bold "Tasty" }} {{ Color "99" "0" " Gum " }}`).
+// Like upstream's they are variadic: the last value is the text, and Color
+// takes a foreground, or a foreground and a background, before it.
 // ---------------------------------------------------------------------------
 
-const SGR: Record<string, string> = {
-  Bold: '1', Faint: '2', Italic: '3', Underline: '4', Blink: '5', Reverse: '7', CrossOut: '9', Overline: '53',
-};
+type TemplateFunc = (...values: string[]) => string;
 
-function colorSequence(color: string, background: boolean): string {
-  if (/^#[0-9a-fA-F]{6}$/.test(color)) {
-    const [r, g, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
-    return `${background ? 48 : 38};2;${r};${g};${b}`;
-  }
-  const n = Number(color);
-  if (!Number.isInteger(n) || n < 0 || n > 255) return '';
-  return `${background ? 48 : 38};5;${n}`;
+const last = (values: string[]) => values[values.length - 1];
+
+function attribute(apply: (s: Style) => Style): TemplateFunc {
+  return (...values) => apply(newStyle()).render(values[0]);
 }
 
-function styled(text: string, ...sequences: string[]): string {
-  const seq = sequences.filter(Boolean).join(';');
-  return seq ? `\x1b[${seq}m${text}\x1b[0m` : text;
-}
-
-const TEMPLATE_FUNCS: Record<string, (...args: string[]) => string> = {
-  Color: (fg, bg, text) => styled(text, colorSequence(fg, false), colorSequence(bg, true)),
-  Foreground: (color, text) => styled(text, colorSequence(color, false)),
-  Background: (color, text) => styled(text, colorSequence(color, true)),
-  ...Object.fromEntries(Object.entries(SGR).map(([name, code]) => [name, (text: string) => styled(text, code)])),
+const TEMPLATE_FUNCS: Record<string, TemplateFunc> = {
+  Color: (...values) => {
+    let s = newStyle();
+    if (values.length === 2) s = s.foreground(values[0]);
+    else if (values.length === 3) s = s.foreground(values[0]).background(values[1]);
+    return s.render(last(values));
+  },
+  Foreground: (...values) => (values.length === 2 ? newStyle().foreground(values[0]) : newStyle()).render(last(values)),
+  Background: (...values) => (values.length === 2 ? newStyle().background(values[0]) : newStyle()).render(last(values)),
+  Bold: attribute((s) => s.bold(true)),
+  Faint: attribute((s) => s.faint(true)),
+  Italic: attribute((s) => s.italic(true)),
+  Underline: attribute((s) => s.underline(true)),
+  // Lip Gloss has no overline: upstream v2 leaves the text as it is.
+  Overline: attribute((s) => s),
+  Blink: attribute((s) => s.blink(true)),
+  Reverse: attribute((s) => s.reverse(true)),
+  CrossOut: attribute((s) => s.strikethrough(true)),
 };
 
 /** Evaluates one action body: `Func arg (Func arg) "literal"`. */
@@ -103,11 +110,10 @@ function evalAction(source: string): string {
       args.push(parseOperand());
       skipSpace();
     }
-    const fn = TEMPLATE_FUNCS[name];
-    if (args.length !== fn.length) {
-      throw new Error(`unable to parse template: ${name} expects ${fn.length} arguments, got ${args.length}`);
+    if (args.length === 0) {
+      throw new Error(`unable to parse template: ${name} expects at least 1 argument, got 0`);
     }
-    return fn(...args);
+    return TEMPLATE_FUNCS[name](...args);
   };
 
   const value = parseCall();
@@ -174,8 +180,5 @@ export async function run(parsed: ParsedArgs): Promise<void> {
       break;
   }
 
-  process.stdout.write(output);
-  if (!output.endsWith('\n')) {
-    process.stdout.write('\n');
-  }
+  printStyled(output, !output.endsWith('\n'));
 }

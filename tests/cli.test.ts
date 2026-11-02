@@ -3,6 +3,7 @@
  */
 import { describe, test, expect } from "bun:test";
 import { stripAnsi } from "@oakoliver/lipgloss";
+import { normalizeSgr } from "./sgr";
 
 function gum(...args: string[]): string {
   const proc = Bun.spawnSync(["bun", "src/cli.ts", ...args], { cwd: `${import.meta.dir}/..` });
@@ -49,7 +50,10 @@ describe("gum style", () => {
   });
 
   test("keeps its colors when the output is captured, so styled blocks compose", () => {
-    const proc = Bun.spawnSync(["bun", "src/cli.ts", "style", "--foreground", "212", "x"], { cwd: `${import.meta.dir}/..` });
+    const proc = Bun.spawnSync(["bun", "src/cli.ts", "style", "--foreground", "212", "x"], {
+      cwd: `${import.meta.dir}/..`,
+      env: { ...process.env, TERM: "xterm-256color", COLORTERM: "", NO_COLOR: "", CLICOLOR_FORCE: "" },
+    });
     // lipgloss resets with ESC[0m before 1.1.2 and ESC[m (as upstream v2) after.
     expect(proc.stdout.toString()).toMatch(/^\x1b\[38;5;212mx\x1b\[0?m\n$/);
   });
@@ -78,13 +82,10 @@ describe("gum format", () => {
     expect(raw("format", "# Title")).not.toBe(raw("format", "--theme", "dark", "# Title"));
   });
 
-  test("templates run termenv's template functions", () => {
-    expect(raw("format", "-t", "template", '{{ Bold "Tasty" }} {{ Color "99" "0" " Gum " }}').trim()).toBe(
-      "\x1b[1mTasty\x1b[0m \x1b[38;5;99;48;5;0m Gum \x1b[0m",
-    );
-    expect(raw("format", "-t", "template", '{{ Italic (Foreground "212" "x") }}').trim()).toBe(
-      "\x1b[3m\x1b[38;5;212mx\x1b[0m\x1b[0m",
-    );
+  test("templates run the styling functions, nested with parentheses", () => {
+    const template = (body: string) => normalizeSgr(raw("format", "-t", "template", body)).trim();
+    expect(template('{{ Bold "Tasty" }} {{ Color "99" "0" " Gum " }}')).toBe("\x1b[1mTasty\x1b[m \x1b[38;5;99;40m Gum \x1b[m");
+    expect(template('{{ Italic (Foreground "212" "x") }}')).toBe("\x1b[3;38;5;212mx\x1b[m\x1b[m");
   });
 });
 

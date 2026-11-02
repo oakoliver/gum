@@ -1,0 +1,632 @@
+[
+ {
+  "args": [
+   "style",
+   "--foreground",
+   "212",
+   "--border",
+   "rounded",
+   "--border-foreground",
+   "#ff8800",
+   "--padding",
+   "0 1",
+   "Hello"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "\u001b[38;2;255;136;0m╭───────╮\u001b[m\n\u001b[38;2;255;136;0m│\u001b[m \u001b[38;5;212mHello\u001b[m \u001b[38;2;255;136;0m│\u001b[m\n\u001b[38;2;255;136;0m╰───────╯\u001b[m"
+ },
+ {
+  "args": [
+   "style",
+   "--foreground",
+   "212",
+   "--border",
+   "rounded",
+   "--border-foreground",
+   "#ff8800",
+   "--padding",
+   "0 1",
+   "Hello"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "\u001b[38;5;208m╭───────╮\u001b[m\n\u001b[38;5;208m│\u001b[m \u001b[38;5;212mHello\u001b[m \u001b[38;5;208m│\u001b[m\n\u001b[38;5;208m╰───────╯\u001b[m"
+ },
+ {
+  "args": [
+   "style",
+   "--foreground",
+   "212",
+   "--border",
+   "rounded",
+   "--border-foreground",
+   "#ff8800",
+   "--padding",
+   "0 1",
+   "Hello"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "\u001b[91m╭───────╮\u001b[m\n\u001b[91m│\u001b[m \u001b[91mHello\u001b[m \u001b[91m│\u001b[m\n\u001b[91m╰───────╯\u001b[m"
+ },
+ {
+  "args": [
+   "style",
+   "--foreground",
+   "#ff8800",
+   "--bold",
+   "--italic",
+   "x"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "\u001b[1;3;38;2;255;136;0mx\u001b[m"
+ },
+ {
+  "args": [
+   "style",
+   "--foreground",
+   "#ff8800",
+   "--bold",
+   "--italic",
+   "x"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "\u001b[1;3;38;5;208mx\u001b[m"
+ },
+ {
+  "args": [
+   "style",
+   "--foreground",
+   "#ff8800",
+   "--bold",
+   "--italic",
+   "x"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "\u001b[1;3;91mx\u001b[m"
+ },
+ {
+  "args": [
+   "style",
+   "--background",
+   "#00ff00",
+   "--width",
+   "6",
+   "--align",
+   "right",
+   "x"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "\u001b[48;2;0;255;0m     \u001b[m\u001b[48;2;0;255;0mx\u001b[m"
+ },
+ {
+  "args": [
+   "style",
+   "--background",
+   "#00ff00",
+   "--width",
+   "6",
+   "--align",
+   "right",
+   "x"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "\u001b[48;5;46m     \u001b[m\u001b[48;5;46mx\u001b[m"
+ },
+ {
+  "args": [
+   "style",
+   "--background",
+   "#00ff00",
+   "--width",
+   "6",
+   "--align",
+   "right",
+   "x"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "\u001b[102m     \u001b[m\u001b[102mx\u001b[m"
+ },
+ {
+  "args": [
+   "style",
+   "--border",
+   "double",
+   "--border-foreground",
+   "99",
+   "--margin",
+   "1 2",
+   "a",
+   "b"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "       \n  \u001b[38;5;99m╔═╗\u001b[m  \n  \u001b[38;5;99m║\u001b[ma\u001b[38;5;99m║\u001b[m  \n  \u001b[38;5;99m║\u001b[mb\u001b[38;5;99m║\u001b[m  \n  \u001b[38;5;99m╚═╝\u001b[m  \n       "
+ },
+ {
+  "args": [
+   "style",
+   "--border",
+   "double",
+   "--border-foreground",
+   "99",
+   "--margin",
+   "1 2",
+   "a",
+   "b"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "       \n  \u001b[38;5;99m╔═╗\u001b[m  \n  \u001b[38;5;99m║\u001b[ma\u001b[38;5;99m║\u001b[m  \n  \u001b[38;5;99m║\u001b[mb\u001b[38;5;99m║\u001b[m  \n  \u001b[38;5;99m╚═╝\u001b[m  \n       "
+ },
+ {
+  "args": [
+   "style",
+   "--border",
+   "double",
+   "--border-foreground",
+   "99",
+   "--margin",
+   "1 2",
+   "a",
+   "b"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "       \n  \u001b[94m╔═╗\u001b[m  \n  \u001b[94m║\u001b[ma\u001b[94m║\u001b[m  \n  \u001b[94m║\u001b[mb\u001b[94m║\u001b[m  \n  \u001b[94m╚═╝\u001b[m  \n       "
+ },
+ {
+  "args": [
+   "join",
+   "--horizontal",
+   "a",
+   "b"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "ab"
+ },
+ {
+  "args": [
+   "join",
+   "--horizontal",
+   "a",
+   "b"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "ab"
+ },
+ {
+  "args": [
+   "join",
+   "--horizontal",
+   "a",
+   "b"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "ab"
+ },
+ {
+  "args": [
+   "format",
+   "# Title\n\nSome **bold** and *italic* and `code` and a list:\n\n- one\n- two\n\n> quote"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "  \n  \u001b[38;5;212;1mTitle\u001b[m\n  \n  Some \u001b[1mbold\u001b[m and \u001b[3mitalic\u001b[m and \u001b[38;5;212;48;5;236m code \u001b[m and a list:\n  \n  • one\n  • two\n  \n  │ quote"
+ },
+ {
+  "args": [
+   "format",
+   "# Title\n\nSome **bold** and *italic* and `code` and a list:\n\n- one\n- two\n\n> quote"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "  \n  \u001b[38;5;212;1mTitle\u001b[m\n  \n  Some \u001b[1mbold\u001b[m and \u001b[3mitalic\u001b[m and \u001b[38;5;212;48;5;236m code \u001b[m and a list:\n  \n  • one\n  • two\n  \n  │ quote"
+ },
+ {
+  "args": [
+   "format",
+   "# Title\n\nSome **bold** and *italic* and `code` and a list:\n\n- one\n- two\n\n> quote"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "  \n  \u001b[91;1mTitle\u001b[m\n  \n  Some \u001b[1mbold\u001b[m and \u001b[3mitalic\u001b[m and \u001b[91;40m code \u001b[m and a list:\n  \n  • one\n  • two\n  \n  │ quote"
+ },
+ {
+  "args": [
+   "format",
+   "--theme",
+   "dark",
+   "# Title\n\nSome **bold**"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "\n  \u001b[38;5;228;48;5;63;1m \u001b[m\u001b[38;5;228;48;5;63;1mTitle\u001b[m\u001b[38;5;228;48;5;63;1m \u001b[m\u001b[38;5;252m\u001b[m\n  \u001b[38;5;252m\u001b[m\n  \u001b[38;5;252mSome \u001b[m\u001b[38;5;252;1mbold\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "--theme",
+   "dark",
+   "# Title\n\nSome **bold**"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "\n  \u001b[38;5;228;48;5;63;1m \u001b[m\u001b[38;5;228;48;5;63;1mTitle\u001b[m\u001b[38;5;228;48;5;63;1m \u001b[m\u001b[38;5;252m\u001b[m\n  \u001b[38;5;252m\u001b[m\n  \u001b[38;5;252mSome \u001b[m\u001b[38;5;252;1mbold\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "--theme",
+   "dark",
+   "# Title\n\nSome **bold**"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "\n  \u001b[93;104;1m \u001b[m\u001b[93;104;1mTitle\u001b[m\u001b[93;104;1m \u001b[m\u001b[97m\u001b[m\n  \u001b[97m\u001b[m\n  \u001b[97mSome \u001b[m\u001b[97;1mbold\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "--theme",
+   "light",
+   "# Title\n\n[link](https://example.com)"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "\n  \u001b[38;5;228;48;5;63;1m \u001b[m\u001b[38;5;228;48;5;63;1mTitle\u001b[m\u001b[38;5;228;48;5;63;1m \u001b[m\u001b[38;5;234m\u001b[m\n  \u001b[38;5;234m\u001b[m\n  \u001b]8;id=1874592979;https://example.com\u0007\u001b[38;5;29;1mlink\u001b[m\u001b]8;;\u0007\u001b[38;5;234m \u001b[m\u001b[38;5;36;4m\u001b]8;id=1874592979;https://example.com\u0007https://example.com\u001b]8;;\u0007\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "--theme",
+   "light",
+   "# Title\n\n[link](https://example.com)"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "\n  \u001b[38;5;228;48;5;63;1m \u001b[m\u001b[38;5;228;48;5;63;1mTitle\u001b[m\u001b[38;5;228;48;5;63;1m \u001b[m\u001b[38;5;234m\u001b[m\n  \u001b[38;5;234m\u001b[m\n  \u001b]8;id=1874592979;https://example.com\u0007\u001b[38;5;29;1mlink\u001b[m\u001b]8;;\u0007\u001b[38;5;234m \u001b[m\u001b[38;5;36;4m\u001b]8;id=1874592979;https://example.com\u0007https://example.com\u001b]8;;\u0007\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "--theme",
+   "light",
+   "# Title\n\n[link](https://example.com)"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "\n  \u001b[93;104;1m \u001b[m\u001b[93;104;1mTitle\u001b[m\u001b[93;104;1m \u001b[m\u001b[30m\u001b[m\n  \u001b[30m\u001b[m\n  \u001b]8;id=1874592979;https://example.com\u0007\u001b[32;1mlink\u001b[m\u001b]8;;\u0007\u001b[30m \u001b[m\u001b[32;4m\u001b]8;id=1874592979;https://example.com\u0007https://example.com\u001b]8;;\u0007\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Bold \"Tasty\" }} {{ Color \"99\" \"0\" \" Gum \" }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "\u001b[1mTasty\u001b[m \u001b[38;5;99;40m Gum \u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Bold \"Tasty\" }} {{ Color \"99\" \"0\" \" Gum \" }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "\u001b[1mTasty\u001b[m \u001b[38;5;99;40m Gum \u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Bold \"Tasty\" }} {{ Color \"99\" \"0\" \" Gum \" }}"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "\u001b[1mTasty\u001b[m \u001b[94;40m Gum \u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Italic (Foreground \"212\" \"x\") }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "\u001b[3;38;5;212mx\u001b[m\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Italic (Foreground \"212\" \"x\") }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "\u001b[3;38;5;212mx\u001b[m\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Italic (Foreground \"212\" \"x\") }}"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "\u001b[3;91mx\u001b[m\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Color \"#ff8800\" \"hi\" }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "\u001b[38;2;255;136;0mhi\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Color \"#ff8800\" \"hi\" }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "\u001b[38;5;208mhi\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Color \"#ff8800\" \"hi\" }}"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "\u001b[91mhi\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Color \"99\" \"fg only\" }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "\u001b[38;5;99mfg only\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Color \"99\" \"fg only\" }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "\u001b[38;5;99mfg only\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Color \"99\" \"fg only\" }}"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "\u001b[94mfg only\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Foreground \"#00ff00\" \"g\" }} {{ Background \"212\" \"bg\" }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "\u001b[38;2;0;255;0mg\u001b[m \u001b[48;5;212mbg\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Foreground \"#00ff00\" \"g\" }} {{ Background \"212\" \"bg\" }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "\u001b[38;5;46mg\u001b[m \u001b[48;5;212mbg\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Foreground \"#00ff00\" \"g\" }} {{ Background \"212\" \"bg\" }}"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "\u001b[92mg\u001b[m \u001b[101mbg\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Bold \"first\" \"ignored\" }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "\u001b[1mfirst\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Bold \"first\" \"ignored\" }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "\u001b[1mfirst\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Bold \"first\" \"ignored\" }}"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "\u001b[1mfirst\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Overline \"o\" }}{{ Blink \"b\" }}{{ Reverse \"r\" }}{{ CrossOut \"c\" }}{{ Faint \"f\" }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "COLORTERM": "truecolor"
+  },
+  "expected": "o\u001b[5mb\u001b[m\u001b[7mr\u001b[m\u001b[9mc\u001b[m\u001b[2mf\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Overline \"o\" }}{{ Blink \"b\" }}{{ Reverse \"r\" }}{{ CrossOut \"c\" }}{{ Faint \"f\" }}"
+  ],
+  "env": {
+   "TERM": "xterm-256color"
+  },
+  "expected": "o\u001b[5mb\u001b[m\u001b[7mr\u001b[m\u001b[9mc\u001b[m\u001b[2mf\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "template",
+   "{{ Overline \"o\" }}{{ Blink \"b\" }}{{ Reverse \"r\" }}{{ CrossOut \"c\" }}{{ Faint \"f\" }}"
+  ],
+  "env": {
+   "TERM": "xterm"
+  },
+  "expected": "o\u001b[5mb\u001b[m\u001b[7mr\u001b[m\u001b[9mc\u001b[m\u001b[2mf\u001b[m"
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "code",
+   "-l",
+   "go",
+   "package main\nfunc main() {}\n"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "GLAMOUR_STYLE": "notty"
+  },
+  "expected": "\n  \n    package main\n    func main() {}\n    "
+ },
+ {
+  "args": [
+   "format",
+   "-t",
+   "code",
+   "-l",
+   "go",
+   "package main\nfunc main() {}\n"
+  ],
+  "env": {
+   "TERM": "xterm-256color",
+   "GLAMOUR_STYLE": "ascii"
+  },
+  "expected": "\n  \n    package main\n    func main() {}\n    "
+ }
+]
