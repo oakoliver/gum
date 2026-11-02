@@ -66,8 +66,11 @@ describe("gum style", () => {
 });
 
 describe("gum format", () => {
+  // A 256-color terminal, forced through the pipe as upstream's fixtures are,
+  // so the bytes don't depend on the TERM of whoever runs the tests.
+  const colorEnv = { ...process.env, TERM: "xterm-256color", CLICOLOR_FORCE: "1", NO_COLOR: undefined, COLORTERM: undefined };
   function raw(...args: string[]): string {
-    return Bun.spawnSync(["bun", "src/cli.ts", ...args], { cwd: `${import.meta.dir}/..` }).stdout.toString();
+    return Bun.spawnSync(["bun", "src/cli.ts", ...args], { cwd: `${import.meta.dir}/..`, env: colorEnv }).stdout.toString();
   }
 
   test("--type and -t select the format", () => {
@@ -226,7 +229,8 @@ describe("gum <command> --help", () => {
   });
 
   test("leaves --help after -- to the command spin runs", () => {
-    // printf, not echo: GNU coreutils' /bin/echo prints its own help for a lone --help.
-    expect(gum("spin", "--show-output", "--", "printf", "%s\\n", "--help").trim()).toBe("--help");
+    // The shell's printf builtin: GNU echo prints its own help for a lone --help,
+    // and uutils printf (newer Ubuntu) does for --help in any position.
+    expect(gum("spin", "--show-output", "--", "sh", "-c", 'printf "%s\\n" "$1"', "sh", "--help").trim()).toBe("--help");
   });
 });
